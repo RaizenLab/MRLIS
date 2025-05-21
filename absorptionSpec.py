@@ -20,28 +20,88 @@ def absorptionSignal(w,w0,dw,dShift):
     return res
 
 def main():
+    # Experiment Parameters
     thetaMax = 0.0195
-    waveL = 460.73330e-9
+    waveL = 460.73330e-9 # From https://physics.nist.gov/PhysRefData/ASD/lines_form.html (Sr-88, 5s^2 1S0 -> 5s5p 1P1)
     freq = con.c/waveL
     ovenTemp = 530+273.15
     mSr = 1.4549642e-25
     einsteinA = 2.01e8
     linewidth = (einsteinA)/(2*con.pi)
 
-    vOven = averageV(ovenTemp, mSr)
-    shift = doppler(freq, vOven, thetaMax)
+    # Colors for individual isotope plots
+    colors = ['blue', 'green', 'red', 'purple']
 
+    # Isotope Parameters (from NIST)
+    isotopes = [
+        {"mass": 83.913419 * con.atomic_mass, "shift": -270.8e6, "abundance": 0.0056, "name": "Sr-84"},
+        {"mass": 85.90926073 * con.atomic_mass, "shift": -124.8e6, "abundance": 0.0986, "name": "Sr-86"},
+        {"mass": 86.90887750 * con.atomic_mass, "shift": -68.9e6, "abundance": 0.0700, "name": "Sr-87"},
+        {"mass": 87.90561226 * con.atomic_mass, "shift": 0.0, "abundance": 0.8258, "name": "Sr-88"},
+    ]
+
+    ## Use for single isotope
+    # vOven = averageV(ovenTemp, mSr)
+    # shift = doppler(freq, vOven, thetaMax)
+    # absS = np.array(absorptionSignal(frequencies,freq, linewidth, shift))
+    # plt.plot(frequencies,absS)
+    # plt.show()
+    
+    ## Frequency Range for Plotting
     minFreq = freq - 0.5e9
     maxFreq = freq + 0.5e9
     frequencies = np.linspace(minFreq, maxFreq, num=1000, endpoint=True)
-    absS = np.array(absorptionSignal(frequencies,freq, linewidth, shift))
-    plt.plot(frequencies,absS)
-    plt.show()
-
-    print("The central resonance frequency is " + str(freq*1e-9) + "GHz")
-    print("The Natural Linewidth is " + str(linewidth*1e-6)+ "MHz")
-    print("The Doppler Shift is " + str(shift*1e-6) + "MHz")
     
+    # Calculate total absorption signal
+    total_abs = np.zeros_like(frequencies)
+    plt.figure(figsize=(10, 6))
+
+    for isotope in isotopes:
+        mass = isotope["mass"]
+        mass = isotope["mass"]
+        iso_shift = isotope["shift"]
+        abundance = isotope["abundance"]
+        name = isotope["name"]
+
+        # Resonance frequency for this isotope (Sr-88 freq + shift)
+        w0 = freq + iso_shift
+
+        # Calculate Doppler shift for this isotope
+        vOven = averageV(ovenTemp, mass)
+        doppler_shift = doppler(w0, vOven, thetaMax)
+
+        # Calculate absorption signal
+        abs_signal = absorptionSignal(frequencies, w0, linewidth, doppler_shift)
+        abs_signal *= abundance  # Weight by abundance
+        total_abs += abs_signal
+
+    
+    # Plot total absorption signal first (background)
+    plt.plot(frequencies / 1e9, total_abs, label="Total Signal", color="black", 
+             linewidth=2.5, alpha=0.5, zorder=1)
+
+    # Plot individual isotope signals on top
+    for i, isotope in enumerate(isotopes):
+        mass = isotope["mass"]
+        iso_shift = isotope["shift"]
+        abundance = isotope["abundance"]
+        name = isotope["name"]
+        w0 = freq + iso_shift
+        vOven = averageV(ovenTemp, mass)
+        doppler_shift = doppler(w0, vOven, thetaMax)
+        abs_signal = absorptionSignal(frequencies, w0, linewidth, doppler_shift)
+        abs_signal *= abundance
+        plt.plot(frequencies / 1e9, abs_signal, label=f"{name} (shift: {iso_shift/1e6:.1f} MHz)", 
+                 linestyle='--', color=colors[i], linewidth=1.5, alpha=0.9, zorder=2)
+
+    # Plot settings
+    plt.xlabel("Frequency (GHz)", fontsize=12)
+    plt.ylabel("Absorption Signal (arb. units)", fontsize=12)
+    plt.title("Absorption Spectra for Strontium Isotopes (Relative to Sr-88)", fontsize=14)
+    plt.legend(loc="upper right", fontsize=10)
+    plt.grid(True, which="both", linestyle='-', alpha=0.5)
+    plt.minorticks_on()
+    plt.show()
 
 
 if __name__ == "__main__":
