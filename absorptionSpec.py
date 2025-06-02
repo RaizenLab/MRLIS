@@ -29,9 +29,6 @@ def main():
     einsteinA = 2.01e8
     linewidth = (einsteinA)/(2*con.pi)
 
-    # Colors for individual isotope plots
-    colors = ['blue', 'green', 'red', 'purple']
-
     # Isotope Parameters (from NIST)
     isotopes = [
         {"mass": 83.913419 * con.atomic_mass, "shift": -270.8e6, "abundance": 0.0056, "name": "Sr-84"},
@@ -79,6 +76,9 @@ def main():
     # Plot total absorption signal first (background)
     plt.plot(frequencies / 1e9, total_abs, label="Total Signal", color="black", 
              linewidth=2.5, alpha=0.5, zorder=1)
+    
+    # Colors for individual isotope plots
+    colors = ['blue', 'green', 'red', 'purple']
 
     # Plot individual isotope signals on top
     for i, isotope in enumerate(isotopes):
@@ -99,8 +99,8 @@ def main():
     plt.ylabel("Absorption Signal (arb. units)", fontsize=12)
     plt.title("Absorption Spectra for Strontium Isotopes (Relative to Sr-88)", fontsize=14)
     plt.legend(loc="upper right", fontsize=10)
-    plt.grid(True, which="both", linestyle='-', alpha=0.5)
-    plt.minorticks_on()
+    # plt.grid(True, which="both", linestyle='-', alpha=0.5)
+    # plt.minorticks_on()
     plt.show()
 
 
