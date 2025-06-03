@@ -14,6 +14,11 @@ def doppler(w0,v,thet):
     dFreq  = w0*(v/con.c)*np.sin(thet)
     return dFreq
 
+def isotopeSpectra(w,w0,dw,dShift):
+    absPlus = (dw/2)**2 + (w-w0+dShift)**2
+    res = 1/absPlus
+    return res
+
 def absorptionSignal(w,w0,dw,dShift):
     absPlus = (dw/2)**2 + (w-w0+dShift)**2
     absMin = (dw/2)**2 + (w-w0-dShift)**2
@@ -95,14 +100,50 @@ def main():
         abs_signal *= abundance
         plt.plot(frequencies / 1e9, abs_signal, label=f"{name} (shift: {iso_shift/1e6:.1f} MHz)", 
                  linestyle='--', color=colors[i], linewidth=1.5, alpha=0.9, zorder=2)
-
-    # Plot settings
+    #  Plot settings
     plt.xlabel("Frequency (GHz)", fontsize=12)
     plt.ylabel("Absorption Signal (arb. units)", fontsize=12)
     plt.title("Absorption Spectra for Strontium Isotopes (Relative to Sr-88)", fontsize=14)
     plt.legend(loc="upper right", fontsize=10)
     # plt.grid(True, which="both", linestyle='-', alpha=0.5)
     # plt.minorticks_on()
+
+    
+    # New plot for isotopeSpectra
+    plt.figure(figsize=(10, 6))
+    total_spectra = np.zeros_like(frequencies)
+
+    for isotope in isotopes:
+        mass = isotope["mass"]
+        iso_shift = isotope["shift"]
+        abundance = isotope["abundance"]
+        name = isotope["name"]
+        w0 = freq + iso_shift
+        vOven = averageV(ovenTemp, mass)
+        doppler_shift = doppler(w0, vOven, thetaMax)
+        spectra = isotopeSpectra(frequencies, w0, linewidth, doppler_shift)
+        spectra *= abundance  # Weight by abundance
+        total_spectra += spectra
+
+    # Plot total isotope spectra (background)
+    plt.plot(frequencies / 1e9, total_spectra, label="Total Isotope Spectra", color="black", 
+             linewidth=2.5, alpha=0.5, zorder=1)
+
+    # Plot individual isotope spectra
+    for i, isotope in enumerate(isotopes):
+        mass = isotope["mass"]
+        iso_shift = isotope["shift"]
+        abundance = isotope["abundance"]
+        name = isotope["name"]
+        w0 = freq + iso_shift
+        vOven = averageV(ovenTemp, mass)
+        doppler_shift = doppler(w0, vOven, thetaMax)
+        spectra = isotopeSpectra(frequencies, w0, linewidth, doppler_shift)
+        spectra *= abundance
+        plt.plot(frequencies / 1e9, spectra, label=f"{name} (shift: {iso_shift/1e6:.1f} MHz)", 
+                 linestyle='--', color=colors[i], linewidth=1.5, alpha=0.9, zorder=2)
+
+    
     plt.show()
 
 
