@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from sympy import meijerg
+from sympy import meijerg, N
 import scipy.constants as con
 matplotlib.use('TkAgg')
 
@@ -38,14 +38,15 @@ def main():
     vel0 = averageV(Toven, sr84.mass)
 
     ## Generate Data for Efficiency vs Power
-    Power = np.linspace(1e-6, 100, num=1000, endpoint=True)
+    finPow = 100
+    Power = np.linspace(1e-6, finPow, num=1000, endpoint=True)
     ionEff = []
     for p in Power:
-        frontTerm = ((gammaParam*p)**4)/(16*np.sqrt(con.pi)*vel0**4)
-        tmp = ((gammaParam*p)**2)/(4*vel0**2)
-        mG = meijerg([[],[]],[[-2,-1.5,0],[]],tmp)
-        nu = frontTerm*mG
-        ionEff.append(1-nu)
+        frontTerm = ((gammaParam * p) ** 4) / (16 * np.sqrt(con.pi) * vel0 ** 4)
+        tmp = ((gammaParam * p) ** 2) / (4 * vel0 ** 2)
+        mG = N(meijerg([[], []], [[-2, -1.5, 0], []], tmp))  # Force numerical evaluation
+        nu = frontTerm * mG
+        ionEff.append(float(1 - nu))  # Convert to float to ensure numerical value
 
     plt.figure(figsize=(10, 6))
     plt.plot(Power, ionEff, color="black", linewidth=2.5)
@@ -56,7 +57,8 @@ def main():
 
 
     ## Printouts
-    print('Saturation Current of Preparation Laser = ' + str(Isat))
+    print(f'Ionization Efficiency at {finPow:.4g} Watts: {100 * ionEff[-1]:.4g}%')
+    print(f'Saturation Current of Preparation Laser = {Isat*0.015**2:.4g}W for 1.5cm Beam')
 
 if __name__ == "__main__":
     main()
