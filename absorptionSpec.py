@@ -6,7 +6,8 @@ import scipy.constants as con
 matplotlib.use('TkAgg')
 
 def averageV(T,m):
-    vav = np.sqrt((8*con.k*T)/(m*con.pi))
+    #vav = np.sqrt((8*con.k*T)/(m*con.pi))
+    vav = np.sqrt((2*con.k*T)/(m))
     return vav
 
 def doppler(w0,v,thet):
@@ -38,8 +39,9 @@ def main():
     ]
 
     ## Use for single isotope
-    # vOven = averageV(ovenTemp, mSr)
-    # shift = doppler(freq, vOven, thetaMax)
+    vOven = averageV(ovenTemp, mSr)
+    shift = doppler(freq, vOven, thetaMax)
+    print('Doppler Shift with Adjusted velocity: ' + str(shift*1e-6) + 'MHz')
     # absS = np.array(absorptionSignal(frequencies,freq, linewidth, shift))
     # plt.plot(frequencies,absS)
     # plt.show()
