@@ -5,6 +5,9 @@ import scipy
 import scipy.constants as con
 matplotlib.use('TkAgg')
 
+# Code written by Henry R. Chance
+# This code is intended to calculate the absorption spectra of strontium isotopes
+
 def averageV(T,m):
     #vav = np.sqrt((8*con.k*T)/(m*con.pi))
     vav = np.sqrt((2*con.k*T)/(m))
