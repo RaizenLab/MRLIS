@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import scipy
 import scipy.constants as con
 matplotlib.use('TkAgg')
 
@@ -146,7 +145,35 @@ def main():
         plt.plot(frequencies / 1e9, spectra, label=f"{name} (shift: {iso_shift/1e6:.1f} MHz)", 
                  linestyle='--', color=colors[i], linewidth=1.5, alpha=0.9, zorder=2)
 
-    
+    # New plot to illustrate isotope shifts with Lorentzian profiles
+    plt.figure(figsize=(10, 6))
+    plt.title("Absorption Profiles for Strontium Isotopes", fontsize=14)
+    plt.xlabel("Frequency Shift from Sr-88 (GHz)", fontsize=12)
+    plt.ylabel("Normalized Absorption (arb. units)", fontsize=12)
+
+    for i, isotope in enumerate(isotopes):
+        iso_shift = isotope["shift"]
+        name = isotope["name"]
+
+        # Center frequency for this isotope, relative to Sr-88
+        w0 = freq + iso_shift
+
+        # Calculate Lorentzian profile without Doppler shift to show isotope shift clearly
+        # The dShift argument is set to 0
+        spectra = isotopeSpectra(frequencies, w0, linewidth, 0)
+
+        # Scale by abundance for visualization
+        spectra *= isotope["abundance"]
+
+        plt.plot((frequencies - freq) / 1e9, spectra, label=f"{name} ({isotope['abundance']*100:.1f}%) [{iso_shift/1e6:.1f} MHz]",
+                 color=colors[i], linewidth=2)
+        # Add a vertical line at the center frequency
+        plt.axvline(x=(w0 - freq) / 1e9, color=colors[i], linestyle='--', linewidth=1, alpha=0.8)
+
+    # Set plot limits to a 0.75 GHz window centered on the features
+    plt.xlim(-0.4, 0.25)
+    plt.ylabel("Relative Absorption (arb. units)", fontsize=12)
+    plt.legend(loc="upper right", fontsize=10)
     plt.show()
 
 

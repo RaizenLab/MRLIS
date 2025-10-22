@@ -35,7 +35,7 @@ def main():
     Isat = Saturation(lineWidth, prepLaser) # Saturation intensity of selection/preparation laser [W/m^2]
     w2i = (con.c/ionLaser)*2*con.pi # Angular frequency of ionization laser [rad/s]
     gammaParam = crossSi/(2*con.hbar*w2i*d) # Constant containing parameters of ionization [s^2/(kg m)]
-    vel0 = averageV(Toven, sr84.mass)
+    vel0 = averageV(Toven, sr84.mass) # Average velocity of Sr leaving the oven
 
     ## Generate Data for Efficiency vs Power
     finPow = 100
