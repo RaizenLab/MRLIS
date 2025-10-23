@@ -345,7 +345,6 @@ def main():
         print(f"    {name}: {abundance * 100:.4f}%")
 
     # Create a new list of isotope data for the second pass.
-    # **CRITICAL FIX**: Use isotopes655 as the base to get the correct frequency shifts for the 655nm transition,
     # but update the abundances with the result from the 461nm step.
     isotopes_for_655_shelving = []
     for iso in isotopes655:
@@ -359,6 +358,29 @@ def main():
     print(f"\n Step 2. Final Abundances After Shelving {shelving_target_655['name']} with 655nm light")
     for name, abundance in unexcited_abundances.items():
         print(f"    {name}: {abundance * 100:.4f}%")
+
+    print("\n --- Case 4: First excite with 461nm, then excite with 655nm, ionize using external field ---")
+    goalIsotope = isotopes461[0]  # Target Sr-84 for enrichment
+    excited_abundances_461 = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461)
+    print(f"\n Step 1. Abundances after 461nm Excitation (Targeting {goalIsotope['name']}) ")
+    for name, abundance in excited_abundances_461.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
+
+    # Create a new list of isotope data for the second pass.
+    # but update the abundances with the result from the 461nm step.
+    isotopes_for_655_shelving = []
+    for iso in isotopes655:
+        new_iso_data = iso.copy()  # Create a copy to avoid modifying the original list
+        new_iso_data['abundance'] = excited_abundances_461[iso['name']]
+        isotopes_for_655_shelving.append(new_iso_data)
+
+    # Now, calculate the excited abundances after  using 655nm transition.
+    shelving_target_655 = isotopes_for_655_shelving[0]  # Target Sr-84 for ionization
+    excited_abundances_655 = calculate_excited_abundances(shelving_target_655, isotopes_for_655_shelving, linewidth_655)
+    print(f"\n Step 2. Final Abundances After Excitation of {shelving_target_655['name']} with 655nm light")
+    for name, abundance in excited_abundances_655.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
+
 
     # --- Plotting Section ---
     # plot_isotope_spectra(isotopes461, freq461, linewidth_461)
