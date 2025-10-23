@@ -47,7 +47,7 @@ def calculate_excited_abundances(target_iso, all_isotopes, linewidth):
             # Using your formula: S ≈ (2*delta_nu / Gamma)^2
             # Note: The more accurate formula is S = 1 + (2*delta_nu / Gamma)^2
             # Using your formula as requested:
-            selectivity_over_iso = (2 * delShift / linewidth)**2
+            selectivity_over_iso = 1 + (2 * delShift / linewidth)**2
             
             # Prevent division by zero if two isotopes have identical shifts
             if selectivity_over_iso == 0:
@@ -73,6 +73,50 @@ def calculate_excited_abundances(target_iso, all_isotopes, linewidth):
             new_abundances[name] = contribution / total_excited_population
             
     return new_abundances
+
+def calculate_unexcited_abundances(target_iso, all_isotopes, linewidth):
+    """
+    Calculates the new fractional abundance of isotopes left in the ground state
+    after a laser excites a portion of the population.
+
+    Args:
+        target_iso (dict): The isotope dictionary for the target to be excited.
+        all_isotopes (list): The complete list of isotope dictionaries.
+        linewidth (float): The natural linewidth (FWHM, Gamma) of the transition.
+
+    Returns:
+        dict: A dictionary of {isotope_name: new_abundance} for the unexcited population.
+    """
+    # This dictionary will store the relative number of atoms excited for each isotope.
+    relative_excited_counts = {}
+    laser_frequency_shift = target_iso['shift']
+
+    for iso in all_isotopes:
+        delShift = np.abs(laser_frequency_shift - iso['shift'])
+        # S = 1 + (2*delta_nu / Gamma)^2
+        selectivity_over_iso = 1 + (2 * delShift / linewidth)**2
+        
+        # The number of excited atoms of an isotope 'i' is proportional to its
+        # initial abundance divided by the selectivity factor.
+        relative_excited_counts[iso['name']] = iso['abundance'] / selectivity_over_iso
+
+    # Find the total relative number of atoms that were excited.
+    total_relative_excited = sum(relative_excited_counts.values())
+
+    # Now, calculate the composition of the remaining (unexcited) population.
+    unexcited_abundances = {}
+    total_unexcited_population = 0
+    for iso in all_isotopes:
+        # The unexcited portion is the original abundance minus the excited portion.
+        unexcited_fraction = iso['abundance'] - relative_excited_counts[iso['name']]
+        unexcited_abundances[iso['name']] = unexcited_fraction
+        total_unexcited_population += unexcited_fraction
+
+    # Normalize the unexcited fractions to get the new abundances.
+    for name in unexcited_abundances:
+        unexcited_abundances[name] /= total_unexcited_population
+
+    return unexcited_abundances
 
 def isotopeSpectra(w, w0, dw, dShift):
     """
@@ -103,7 +147,7 @@ def calculate_selectivity_and_purity(isotopes, linewidth):
         isotopes (list): List of isotope dictionaries.
         linewidth (float): Natural linewidth (FWHM, Gamma) of the transition.
     """
-    print("\n--- Isotope Selectivity and Purity Analysis ---")
+    # print("\n--- Isotope Selectivity and Purity Analysis ---")
 
     # Loop through each isotope, treating it as the target
     for target_iso in isotopes:
@@ -129,7 +173,7 @@ def calculate_selectivity_and_purity(isotopes, linewidth):
             delShift = np.abs(target_iso['shift'] - iso['shift'])
             
             # The Selectivity is given by S = 1 + (2*delta_nu / Gamma)^2.
-            select = (2 * delShift / linewidth)**2
+            select = 1 + (2 * delShift / linewidth)**2
             
             # This logic finds the selectivity for the nearest neighbor
             if not min_shift_found or delShift < min_shift_found:
@@ -143,43 +187,9 @@ def calculate_selectivity_and_purity(isotopes, linewidth):
         purity = target_iso['abundance'] / denom
 
         # Print the combined string for this target isotope
-        print(f"{target_iso['name']}: Selectivity (vs nearest neighbor): {selectivity:.2f},  Purity (vs all others): {purity * 100:.2f}%")
+        # print(f"{target_iso['name']}: Selectivity (vs nearest neighbor): {selectivity:.2f},  Purity (vs all others): {purity * 100:.2f}%")
 
-def main():
-    # Experiment Parameters
-    thetaMax = 0.0195  # Collimation angle
-    waveL = 460.73330e-9  # Wavelength for Sr-88 transition
-    freq = con.c / waveL  # Convert wavelength to frequency (Hz)
-    ovenTemp = 530 + 273.15  # Oven temperature in Kelvin
-    mSr = 1.4549642e-25  # Mass of Sr-88
-    
-    # Lifetime of the 5s5p 1P1 state is ~5.2 ns
-    # Einstein A coefficient A = 1/tau
-    einsteinA = 2.01e8  # A coefficient (from 1/4.97e-9 s)
-    # Natural Linewidth (FWHM) Gamma = A / (2*pi)
-    linewidth = (einsteinA) / (2 * con.pi) # This is 31.99 MHz
-
-    # Isotope Parameters (from NIST)
-    # 'shift' is the frequency shift relative to Sr-88 (in Hz)
-    isotopes = [
-        {"mass": 83.913419 * con.atomic_mass, "shift": -270.8e6, "abundance": 0.0056, "name": "Sr-84"},
-        {"mass": 85.90926073 * con.atomic_mass, "shift": -124.8e6, "abundance": 0.0986, "name": "Sr-86"},
-        {"mass": 86.90887750 * con.atomic_mass, "shift": -68.9e6, "abundance": 0.0700, "name": "Sr-87"},
-        {"mass": 87.90561226 * con.atomic_mass, "shift": 0.0, "abundance": 0.8258, "name": "Sr-88"},
-    ]
-
-    # Calculate Selectivities
-    calculate_selectivity_and_purity(isotopes, linewidth)
-
-    # Calculate the New Abundances When each Isotope is targeted
-    print("\n--- New Abundances in Excited Population ---")
-    for target in isotopes:
-        print(f"  Targeting {target['name']}:")
-        abundances = calculate_excited_abundances(target, isotopes, linewidth)
-        for name, abundance in abundances.items():
-            print(f"    {name}: {abundance * 100:.4f}%")
-
-
+def plot_isotope_spectra(isotopes, freq, linewidth):
     ## Frequency Range and Colors for Plotting
     # Set up a frequency range for plotting, centered around Sr-88
     minFreq = freq - 0.5e9
@@ -224,6 +234,134 @@ def main():
     plt.grid(True, linestyle=':', alpha=0.6) # Add a light grid
     plt.tight_layout() # Adjust plot to prevent label cutoff
     plt.show()
+
+
+def main():
+    # Experiment Parameters
+    thetaMax = 0.0195  # Collimation angle
+    ovenTemp = 530 + 273.15  # Oven temperature in Kelvin
+    mSr = 1.4549642e-25  # Mass of Sr-88
+
+    # Isotope Parameters (from NIST)
+    # 'shift' is the frequency shift relative to Sr-88 (in Hz)
+    isotopes461 = [
+        {"mass": 83.913419 * con.atomic_mass, "shift": -270.8e6, "abundance": 0.0056, "name": "Sr-84"},
+        {"mass": 85.90926073 * con.atomic_mass, "shift": -124.8e6, "abundance": 0.0986, "name": "Sr-86"},
+        {"mass": 86.90887750 * con.atomic_mass, "shift": -68.9e6, "abundance": 0.0700, "name": "Sr-87"},
+        {"mass": 87.90561226 * con.atomic_mass, "shift": 0.0, "abundance": 0.8258, "name": "Sr-88"},
+    ]
+    waveL_461 = 460.73330e-9  # Wavelength for Sr-88 transition
+    freq461 = con.c / waveL_461  # Convert wavelength to frequency (Hz)
+    # Lifetime of the 5s5p 1P1 state is ~5.2 ns
+    # Einstein A coefficient A = 1/tau
+    einsteinA_461 = 2.01e8  # A coefficient (from 1/4.97e-9 s)
+    # Natural Linewidth (FWHM) Gamma = A / (2*pi)
+    linewidth_461 = (einsteinA_461) / (2 * con.pi) # This is 31.99 MHz
+
+    # Isotope shifts for the 689 nm line (in Hz)
+    isotopes689 = [
+        {"mass": 83.913419 * con.atomic_mass, "shift": -351.49e6, "abundance": 0.0056, "name": "Sr-84"},
+        {"mass": 85.90926073 * con.atomic_mass, "shift": -163.8174e6, "abundance": 0.0986, "name": "Sr-86"},
+        {"mass": 86.90887750 * con.atomic_mass, "shift": 221.71e6, "abundance": 0.0700, "name": "Sr-87"},
+        {"mass": 87.90561226 * con.atomic_mass, "shift": 0.0, "abundance": 0.8258, "name": "Sr-88"},
+    ]
+    waveL_689 = 689.41434e-9  # Wavelength for Sr-88 689 nm transition
+    freq689 = con.c / waveL_689  # Convert wavelength to frequency (Hz)
+    einsteinA_689 = 4.7e4  # A coefficient for 689 nm transition
+    linewidth_689 = einsteinA_689 / (2 * con.pi)  # Natural Linewidth for 689 nm transition
+    
+
+    # Isotope shifts for 655 nm line (after 461nm excitation)
+    isotopes655 = [
+        {"mass": 83.913419 * con.atomic_mass, "shift": -785.2e6, "abundance": 0.0056, "name": "Sr-84"},
+        {"mass": 85.90926073 * con.atomic_mass, "shift": -350.6e6, "abundance": 0.0986, "name": "Sr-86"},
+        {"mass": 86.90887750 * con.atomic_mass, "shift": -186.1e6, "abundance": 0.0700, "name": "Sr-87"},
+        {"mass": 87.90561226 * con.atomic_mass, "shift": 0.0, "abundance": 0.8258, "name": "Sr-88"},
+    ]
+    waveL_655 = 655.873e-9  # Wavelength for Sr-88 655 nm transition
+    freq655 = con.c / waveL_655  # Convert wavelength to frequency (Hz
+    einsteinA_655 = 8.9e7  # A coefficient for 655 nm transition
+    linewidth_655 = einsteinA_655 / (2 * con.pi)  # Natural Linewidth for 655 nm transition
+
+    # Calculate Selectivities
+    calculate_selectivity_and_purity(isotopes461, linewidth_461)
+
+    # Calculate the New Abundances When each Isotope is targeted
+    # print("\n--- New Abundances in Excited Population ---")
+    # for target in isotopes:
+    #     print(f"  Targeting {target['name']}:")
+    #     abundances = calculate_excited_abundances(target, isotopes, linewidth)
+    #     for name, abundance in abundances.items():
+    #         print(f"    {name}: {abundance * 100:.4f}%")
+
+    ## Calculate spectra after two passes through 461 pathway
+    print("\n--- Case 1: Two Passes through 461nm Ionization Pathway ---")
+    goalIsotope = isotopes461[0]  # Target Sr-84 for enrichment
+    first_pass_abundances = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461)
+    print(f"\n Step 1: Abundances after First Pass (Targeting {goalIsotope['name']})")
+    for name, abundance in first_pass_abundances.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
+
+    # Create a new list of isotope data for the second pass.
+    # This simulates taking the excited population from the first stage
+    # and using it as the input for the second stage.
+    isotopes_after_first_pass = []
+    for iso in isotopes461:
+        new_iso_data = iso.copy()  # Create a copy to avoid modifying the original list
+        new_iso_data['abundance'] = first_pass_abundances[iso['name']]
+        isotopes_after_first_pass.append(new_iso_data)
+    
+    # Now, calculate the abundances after a second pass of enrichment.
+    second_pass_abundances = calculate_excited_abundances(goalIsotope, isotopes_after_first_pass, linewidth_461)
+    print(f"\n Step 2: Abundances after Second Pass (Targeting {goalIsotope['name']})")
+    for name, abundance in second_pass_abundances.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
+
+    ## Calaculate abundances after first shelving stage (using 689 nm intercombination line)
+    print("\n--- Case 2: First shelve with 689nm, then follow with 461nm pathway ---")
+    shelving_target = isotopes689[3]  # Target Sr-88 for shelving
+    unexcited_abundances = calculate_unexcited_abundances(shelving_target, isotopes689, linewidth_689)
+    print(f"\n Step 1: Abundances of Unexcited Atoms After Shelving {shelving_target['name']} using 689nm transition")
+    for name, abundance in unexcited_abundances.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
+
+    isotopes_after_first_pass = []
+    for iso in isotopes461:
+        new_iso_data = iso.copy()  # Create a copy to avoid modifying the original list
+        new_iso_data['abundance'] = unexcited_abundances[iso['name']]
+        isotopes_after_first_pass.append(new_iso_data)
+
+    # Now, calculate the abundances after 461nm ionization pathway.
+    final_abundances = calculate_excited_abundances(goalIsotope, isotopes_after_first_pass, linewidth_461)
+    print(f"\n Step 2: Final Abundances after shelvings and 461nm Ionization Pathway (Targeting {goalIsotope['name']})")
+    for name, abundance in final_abundances.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
+
+    print("\n --- Case 3: First excite with 461nm, then shelve with 655nm ---")
+    goalIsotope = isotopes461[0]  # Target Sr-84 for enrichment
+    excited_abundances_461 = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461)
+    print(f"\n Step 1. Abundances after 461nm Excitation (Targeting {goalIsotope['name']}) ")
+    for name, abundance in excited_abundances_461.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
+
+    # Create a new list of isotope data for the second pass.
+    # **CRITICAL FIX**: Use isotopes655 as the base to get the correct frequency shifts for the 655nm transition,
+    # but update the abundances with the result from the 461nm step.
+    isotopes_for_655_shelving = []
+    for iso in isotopes655:
+        new_iso_data = iso.copy()  # Create a copy to avoid modifying the original list
+        new_iso_data['abundance'] = excited_abundances_461[iso['name']]
+        isotopes_for_655_shelving.append(new_iso_data)
+
+    # Now, calculate the unexcited abundances after shelving step using 655nm transition.
+    shelving_target_655 = isotopes_for_655_shelving[3]  # Target Sr-88 for shelving
+    unexcited_abundances = calculate_unexcited_abundances(shelving_target_655, isotopes_for_655_shelving, linewidth_655)
+    print(f"\n Step 2. Final Abundances After Shelving {shelving_target_655['name']} with 655nm light")
+    for name, abundance in unexcited_abundances.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
+
+    # --- Plotting Section ---
+    # plot_isotope_spectra(isotopes461, freq461, linewidth_461)
 
 if __name__ == "__main__":
     main()

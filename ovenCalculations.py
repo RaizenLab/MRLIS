@@ -245,9 +245,9 @@ def integrand(theta):
 FluxToBeam = 0.25 * no(Tres) * vav(Tres) * Aorfic * WT * Ncap * quad(integrand, 0, theta_max, limit=1000, epsabs=1e-8, epsrel=1e-8)[0]
 TotalFlux = 0.25 * no(Tres) * vav(Tres) * Aorfic * WT * Ncap
 PercentPass = (FluxToBeam / TotalFlux) * 100
-TmassToBeam = (FluxToBeam * mca * 1000) * 86400  # Mass per day (g)
+TmassToBeam = (FluxToBeam * mSr * 1000) * 86400  # Mass per day (g)
 delta_nu = (vav(Tres) / 3e8) * (3e8 / 461e-9) * theta_max * 1e-6  # MHz
-Lifetime = (Nogrames * gramCa) / TotalFlux * (1 / 86400)  # Days
+Lifetime = (Nogrames * gramSr) / TotalFlux * (1 / 86400)  # Days
 
 print(f"Flux to Beam: {FluxToBeam:.2e} atoms/s")
 print(f"Total Flux: {TotalFlux:.2e} atoms/s")
