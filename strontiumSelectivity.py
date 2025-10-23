@@ -359,6 +359,7 @@ def main():
     for name, abundance in unexcited_abundances.items():
         print(f"    {name}: {abundance * 100:.4f}%")
 
+
     print("\n --- Case 4: First excite with 461nm, then excite with 655nm, ionize using external field ---")
     goalIsotope = isotopes461[0]  # Target Sr-84 for enrichment
     excited_abundances_461 = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461)
@@ -381,7 +382,40 @@ def main():
     for name, abundance in excited_abundances_655.items():
         print(f"    {name}: {abundance * 100:.4f}%")
 
+    print("\n --- Case 5: Shelve Sr-88 with 689nm, then excite Sr-84 with 461nm, Shelve remaining Sr-86 with 655nm---")
+    shelving_target = isotopes689[3]  # Target Sr-88 for shelving
+    unexcited_abundances = calculate_unexcited_abundances(shelving_target, isotopes689, linewidth_689)
+    print(f"\n Step 1: Abundances of Unexcited Atoms After Shelving {shelving_target['name']} using 689nm transition")
+    for name, abundance in unexcited_abundances.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
 
+    isotopes_after_first_pass = []
+    for iso in isotopes461:
+        new_iso_data = iso.copy()  # Create a copy to avoid modifying the original list
+        new_iso_data['abundance'] = unexcited_abundances[iso['name']]
+        isotopes_after_first_pass.append(new_iso_data)
+
+    # Now, calculate the abundances after 461nm ionization pathway.
+    intermediate_abundances = calculate_excited_abundances(goalIsotope, isotopes_after_first_pass, linewidth_461)
+    print(f"\n Step 2: Intermediate Abundances after shelvings and 461nm Ionization Pathway (Targeting {goalIsotope['name']})")
+    for name, abundance in intermediate_abundances.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
+    
+    # Create a new list of isotope data for the second pass.
+    # but update the abundances with the result from the 461nm step.
+    isotopes_for_655_shelving = []
+    for iso in isotopes655:
+        new_iso_data = iso.copy()  # Create a copy to avoid modifying the original list
+        new_iso_data['abundance'] = intermediate_abundances[iso['name']]
+        isotopes_for_655_shelving.append(new_iso_data)
+
+    # Now, calculate the unexcited abundances after shelving step using 655nm transition.
+    shelving_target_655 = isotopes_for_655_shelving[1]  # Target Sr-86 for shelving
+    unexcited_abundances = calculate_unexcited_abundances(shelving_target_655, isotopes_for_655_shelving, linewidth_655)
+    print(f"\n Step 3. Final Abundances After Shelving {shelving_target_655['name']} with 655nm light")
+    for name, abundance in unexcited_abundances.items():
+        print(f"    {name}: {abundance * 100:.4f}%")
+    
     # --- Plotting Section ---
     # plot_isotope_spectra(isotopes461, freq461, linewidth_461)
 
