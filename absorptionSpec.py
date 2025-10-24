@@ -29,7 +29,9 @@ def absorptionSignal(w,w0,dw,dShift):
 
 def main():
     # Experiment Parameters
-    thetaMax = 0.0195
+    # thetaMax = 0.0195
+    thetaMeasured_440C = 0.02609
+    thetaMax = thetaMeasured_440C
     waveL = 460.73330e-9 # From https://physics.nist.gov/PhysRefData/ASD/lines_form.html (Sr-88, 5s^2 1S0 -> 5s5p 1P1)
     freq = con.c/waveL
     ovenTemp = 530+273.15
