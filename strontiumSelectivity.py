@@ -9,7 +9,7 @@ matplotlib.use('TkAgg')
 # Code written by Henry R. Chance
 # This code is intended to calculate the slectivity of strontium isotopes in MRLIS
 
-def calculate_excited_abundances(target_iso, all_isotopes, linewidth):
+def calculate_excited_abundances(target_iso, all_isotopes, linewidth, intensity, isat):
     """
     Calculates the new fractional abundance (purity) of *all* isotopes 
     in the excited population when the laser is tuned to a single target isotope.
@@ -47,7 +47,7 @@ def calculate_excited_abundances(target_iso, all_isotopes, linewidth):
             # Using your formula: S ≈ (2*delta_nu / Gamma)^2
             # Note: The more accurate formula is S = 1 + (2*delta_nu / Gamma)^2
             # Using your formula as requested:
-            selectivity_over_iso = 1 + (2 * delShift / linewidth)**2
+            selectivity_over_iso = 1 + ((2 * delShift) / (linewidth*np.sqrt(1+intensity/isat)))**2
             
             # Prevent division by zero if two isotopes have identical shifts
             if selectivity_over_iso == 0:
@@ -74,7 +74,7 @@ def calculate_excited_abundances(target_iso, all_isotopes, linewidth):
             
     return new_abundances
 
-def calculate_unexcited_abundances(target_iso, all_isotopes, linewidth):
+def calculate_unexcited_abundances(target_iso, all_isotopes, linewidth, intensity, isat):
     """
     Calculates the new fractional abundance of isotopes left in the ground state
     after a laser excites a portion of the population.
@@ -94,7 +94,7 @@ def calculate_unexcited_abundances(target_iso, all_isotopes, linewidth):
     for iso in all_isotopes:
         delShift = np.abs(laser_frequency_shift - iso['shift'])
         # S = 1 + (2*delta_nu / Gamma)^2
-        selectivity_over_iso = 1 + (2 * delShift / linewidth)**2
+        selectivity_over_iso = 1 + ((2 * delShift) / (linewidth*np.sqrt(1+intensity/isat)))**2
         
         # The number of excited atoms of an isotope 'i' is proportional to its
         # initial abundance divided by the selectivity factor.
@@ -241,6 +241,8 @@ def main():
     thetaMax = 0.0195  # Collimation angle
     ovenTemp = 530 + 273.15  # Oven temperature in Kelvin
     mSr = 1.4549642e-25  # Mass of Sr-88
+    powerReduce = 1/1000
+    selection_intensity = powerReduce*5658.84 # Intensity of laser W/m^2 (1W with 1.5cm spot size)
 
     # Isotope Parameters (from NIST)
     # 'shift' is the frequency shift relative to Sr-88 (in Hz)
@@ -257,6 +259,8 @@ def main():
     einsteinA_461 = 2.01e8  # A coefficient (from 1/4.97e-9 s)
     # Natural Linewidth (FWHM) Gamma = A / (2*pi)
     linewidth_461 = (einsteinA_461) / (2 * con.pi) # This is 31.99 MHz
+    # This is the saturation intensity of the transition
+    Isat_461 = (con.pi*con.h*linewidth_461/(3*waveL_461**3))
 
     # Isotope shifts for the 689 nm line (in Hz)
     isotopes689 = [
@@ -269,6 +273,7 @@ def main():
     freq689 = con.c / waveL_689  # Convert wavelength to frequency (Hz)
     einsteinA_689 = 4.7e4  # A coefficient for 689 nm transition
     linewidth_689 = einsteinA_689 / (2 * con.pi)  # Natural Linewidth for 689 nm transition
+    Isat_689 = (con.pi*con.h*linewidth_689/(3*waveL_689**3))
     
 
     # Isotope shifts for 655 nm line (after 461nm excitation)
@@ -282,9 +287,10 @@ def main():
     freq655 = con.c / waveL_655  # Convert wavelength to frequency (Hz
     einsteinA_655 = 8.9e7  # A coefficient for 655 nm transition
     linewidth_655 = einsteinA_655 / (2 * con.pi)  # Natural Linewidth for 655 nm transition
+    Isat_655 = (con.pi*con.h*linewidth_655/(3*waveL_655**3))
 
     # Calculate Selectivities
-    calculate_selectivity_and_purity(isotopes461, linewidth_461)
+    # calculate_selectivity_and_purity(isotopes461, linewidth_461)
 
     # Calculate the New Abundances When each Isotope is targeted
     # print("\n--- New Abundances in Excited Population ---")
@@ -297,7 +303,7 @@ def main():
     ## Calculate spectra after two passes through 461 pathway
     print("\n--- Case 1: Two Passes through 461nm Ionization Pathway ---")
     goalIsotope = isotopes461[0]  # Target Sr-84 for enrichment
-    first_pass_abundances = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461)
+    first_pass_abundances = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461,selection_intensity, Isat_461)
     print(f"\n Step 1: Abundances after First Pass (Targeting {goalIsotope['name']})")
     for name, abundance in first_pass_abundances.items():
         print(f"    {name}: {abundance * 100:.4f}%")
@@ -312,7 +318,7 @@ def main():
         isotopes_after_first_pass.append(new_iso_data)
     
     # Now, calculate the abundances after a second pass of enrichment.
-    second_pass_abundances = calculate_excited_abundances(goalIsotope, isotopes_after_first_pass, linewidth_461)
+    second_pass_abundances = calculate_excited_abundances(goalIsotope, isotopes_after_first_pass, linewidth_461, selection_intensity,Isat_461)
     print(f"\n Step 2: Abundances after Second Pass (Targeting {goalIsotope['name']})")
     for name, abundance in second_pass_abundances.items():
         print(f"    {name}: {abundance * 100:.4f}%")
@@ -320,7 +326,7 @@ def main():
     ## Calaculate abundances after first shelving stage (using 689 nm intercombination line)
     print("\n--- Case 2: First shelve with 689nm, then follow with 461nm pathway ---")
     shelving_target = isotopes689[3]  # Target Sr-88 for shelving
-    unexcited_abundances = calculate_unexcited_abundances(shelving_target, isotopes689, linewidth_689)
+    unexcited_abundances = calculate_unexcited_abundances(shelving_target, isotopes689, linewidth_689, selection_intensity, Isat_689)
     print(f"\n Step 1: Abundances of Unexcited Atoms After Shelving {shelving_target['name']} using 689nm transition")
     for name, abundance in unexcited_abundances.items():
         print(f"    {name}: {abundance * 100:.4f}%")
@@ -332,14 +338,14 @@ def main():
         isotopes_after_first_pass.append(new_iso_data)
 
     # Now, calculate the abundances after 461nm ionization pathway.
-    final_abundances = calculate_excited_abundances(goalIsotope, isotopes_after_first_pass, linewidth_461)
+    final_abundances = calculate_excited_abundances(goalIsotope, isotopes_after_first_pass, linewidth_461, selection_intensity, Isat_461)
     print(f"\n Step 2: Final Abundances after shelvings and 461nm Ionization Pathway (Targeting {goalIsotope['name']})")
     for name, abundance in final_abundances.items():
         print(f"    {name}: {abundance * 100:.4f}%")
 
     print("\n --- Case 3: First excite with 461nm, then shelve with 655nm ---")
     goalIsotope = isotopes461[0]  # Target Sr-84 for enrichment
-    excited_abundances_461 = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461)
+    excited_abundances_461 = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461, selection_intensity, Isat_461)
     print(f"\n Step 1. Abundances after 461nm Excitation (Targeting {goalIsotope['name']}) ")
     for name, abundance in excited_abundances_461.items():
         print(f"    {name}: {abundance * 100:.4f}%")
@@ -354,7 +360,7 @@ def main():
 
     # Now, calculate the unexcited abundances after shelving step using 655nm transition.
     shelving_target_655 = isotopes_for_655_shelving[3]  # Target Sr-88 for shelving
-    unexcited_abundances = calculate_unexcited_abundances(shelving_target_655, isotopes_for_655_shelving, linewidth_655)
+    unexcited_abundances = calculate_unexcited_abundances(shelving_target_655, isotopes_for_655_shelving, linewidth_655, selection_intensity, Isat_655)
     print(f"\n Step 2. Final Abundances After Shelving {shelving_target_655['name']} with 655nm light")
     for name, abundance in unexcited_abundances.items():
         print(f"    {name}: {abundance * 100:.4f}%")
@@ -362,7 +368,7 @@ def main():
 
     print("\n --- Case 4: First excite with 461nm, then excite with 655nm, ionize using external field ---")
     goalIsotope = isotopes461[0]  # Target Sr-84 for enrichment
-    excited_abundances_461 = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461)
+    excited_abundances_461 = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461, selection_intensity, Isat_461)
     print(f"\n Step 1. Abundances after 461nm Excitation (Targeting {goalIsotope['name']}) ")
     for name, abundance in excited_abundances_461.items():
         print(f"    {name}: {abundance * 100:.4f}%")
@@ -377,14 +383,14 @@ def main():
 
     # Now, calculate the excited abundances after  using 655nm transition.
     shelving_target_655 = isotopes_for_655_shelving[0]  # Target Sr-84 for ionization
-    excited_abundances_655 = calculate_excited_abundances(shelving_target_655, isotopes_for_655_shelving, linewidth_655)
+    excited_abundances_655 = calculate_excited_abundances(shelving_target_655, isotopes_for_655_shelving, linewidth_655, selection_intensity, Isat_655)
     print(f"\n Step 2. Final Abundances After Excitation of {shelving_target_655['name']} with 655nm light")
     for name, abundance in excited_abundances_655.items():
         print(f"    {name}: {abundance * 100:.4f}%")
 
     print("\n --- Case 5: Shelve Sr-88 with 689nm, then excite Sr-84 with 461nm, Shelve remaining Sr-86 with 655nm---")
     shelving_target = isotopes689[3]  # Target Sr-88 for shelving
-    unexcited_abundances = calculate_unexcited_abundances(shelving_target, isotopes689, linewidth_689)
+    unexcited_abundances = calculate_unexcited_abundances(shelving_target, isotopes689, linewidth_689, selection_intensity, Isat_689)
     print(f"\n Step 1: Abundances of Unexcited Atoms After Shelving {shelving_target['name']} using 689nm transition")
     for name, abundance in unexcited_abundances.items():
         print(f"    {name}: {abundance * 100:.4f}%")
@@ -396,7 +402,7 @@ def main():
         isotopes_after_first_pass.append(new_iso_data)
 
     # Now, calculate the abundances after 461nm ionization pathway.
-    intermediate_abundances = calculate_excited_abundances(goalIsotope, isotopes_after_first_pass, linewidth_461)
+    intermediate_abundances = calculate_excited_abundances(goalIsotope, isotopes_after_first_pass, linewidth_461, selection_intensity, Isat_461)
     print(f"\n Step 2: Intermediate Abundances after shelvings and 461nm Ionization Pathway (Targeting {goalIsotope['name']})")
     for name, abundance in intermediate_abundances.items():
         print(f"    {name}: {abundance * 100:.4f}%")
@@ -411,7 +417,7 @@ def main():
 
     # Now, calculate the unexcited abundances after shelving step using 655nm transition.
     shelving_target_655 = isotopes_for_655_shelving[1]  # Target Sr-86 for shelving
-    unexcited_abundances = calculate_unexcited_abundances(shelving_target_655, isotopes_for_655_shelving, linewidth_655)
+    unexcited_abundances = calculate_unexcited_abundances(shelving_target_655, isotopes_for_655_shelving, linewidth_655, selection_intensity, Isat_655)
     print(f"\n Step 3. Final Abundances After Shelving {shelving_target_655['name']} with 655nm light")
     for name, abundance in unexcited_abundances.items():
         print(f"    {name}: {abundance * 100:.4f}%")
