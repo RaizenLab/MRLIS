@@ -235,12 +235,17 @@ def plot_isotope_spectra(isotopes, freq, linewidth):
     plt.tight_layout() # Adjust plot to prevent label cutoff
     plt.show()
 
+def averageV(T,m):
+    #vav = np.sqrt((8*con.k*T)/(m*con.pi))
+    vav = np.sqrt((2*con.k*T)/(m))
+    return vav
 
 def main():
     # Experiment Parameters
     thetaMax = 0.0195  # Collimation angle
     ovenTemp = 530 + 273.15  # Oven temperature in Kelvin
     mSr = 1.4549642e-25  # Mass of Sr-88
+    vOven = averageV(ovenTemp, mSr)
     powerReduce = 0
     selection_intensity = powerReduce*5658.84 # Intensity of laser W/m^2 (1W with 1.5cm spot size)
 

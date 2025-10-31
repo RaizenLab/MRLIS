@@ -127,7 +127,6 @@ def calculate_unexcited_abundances(target_iso, all_isotopes,
             new_iso_list.append(new_data)
         return new_iso_list
 
-    print("--- Unexcited (Tails) Abundances (Saturation Model) ---")
     for iso in all_isotopes:
         new_iso_data = iso.copy()
         
@@ -140,18 +139,26 @@ def calculate_unexcited_abundances(target_iso, all_isotopes,
         
     return new_iso_list, total_unexcited_fraction
 
+def averageV(T,m):
+    #vav = np.sqrt((8*con.k*T)/(m*con.pi))
+    vav = np.sqrt((2*con.k*T)/(m))
+    return vav
+
 def main():
     global isotopes461, isotopes689, isotopes655
     # Experiment Parameters
     thetaMax = 0.0195  # Collimation angle
     ovenTemp = 530 + 273.15  # Oven temperature in Kelvin
     mSr = 1.4549642e-25  # Mass of Sr-88
+    vOven = averageV(ovenTemp, mSr)
     powerReduce = 1/100  # Factor to reduce laser power by (to account for losses)
     selection_intensity = powerReduce*5658.84 # Intensity of laser W/m^2 (1W with 1.5cm spot size)
     Nstart = 1e14*24*3600  # Initial number of atoms in the interaction region after 1 day of operation
-    print("\n--- Sr Isotope Selectivity Calculations ---")
-    print("\n--- Initial Parameters ---")
+    NstartSr84 = Nstart*isotopes461[0]['abundance']
+    print("\n---- Sr Isotope Selectivity Calculations ----")
+    print("\n--- Initial Parameters ---\n")
     print((f"    Initial number of atoms in interaction region after 1 day: {Nstart:.2e} atoms"))
+    print(f"    Average Atom Velocity from Oven: {vOven:.1f} m/s")
 
     # Isotope Parameters (from NIST)
     # 'shift' is the frequency shift relative to Sr-88 (in Hz)
@@ -164,7 +171,14 @@ def main():
     linewidth_461 = (einsteinA_461) / (2 * con.pi) # This is 31.99 MHz
     # This is the saturation intensity of the transition
     Isat_461 = (con.pi*con.h*con.c*linewidth_461/(3*waveL_461**3))
+    selection_intensity461 = 2*Isat_461
+    satTime461 = 1.0/(einsteinA_461*(1+selection_intensity461/Isat_461))
+    satDistance461 = vOven*satTime461
+    depletionDistance461 = vOven/einsteinA_461
+    print("\n    461nm Laser Parameters:")
     print(f"    461nm Isat: {Isat_461:.2e} W/m^2")
+    print(f"    Time to Saturate: {satTime461:.2e} s")
+    print(f"    Distance to Saturate: {satDistance461:.2e} m, Distance to Depletion: {depletionDistance461:.2e} m")
 
 
     # Isotope shifts for the 689 nm line (in Hz)
@@ -174,7 +188,14 @@ def main():
     linewidth_689 = einsteinA_689 / (2 * con.pi)  # Natural Linewidth for 689 nm transition
     Isat_689 = (con.pi*con.h*con.c*linewidth_689/(3*waveL_689**3))
     selection_intensity689 = 2*Isat_689
+    satTime689 = 1.0/(einsteinA_689*(1+selection_intensity689/Isat_689))
+    satDistance689 = vOven*satTime689
+    depletionDistance689 = vOven/einsteinA_689
+    print("\n    689nm Laser Parameters:")
     print(f"    689nm Isat: {Isat_689:.2e} W/m^2")
+    print(f"    Time to Saturate: {satTime689:.2e} s")
+    print(f"    Distance to Saturate: {satDistance689:.2e} m, Distance to Depletion: {depletionDistance689:.2e} m")
+
     
 
     # Isotope shifts for 655 nm line (after 461nm excitation)
@@ -183,31 +204,44 @@ def main():
     einsteinA_655 = 8.9e7  # A coefficient for 655 nm transition
     linewidth_655 = einsteinA_655 / (2 * con.pi)  # Natural Linewidth for 655 nm transition
     Isat_655 = (con.pi*con.h*con.c*linewidth_655/(3*waveL_655**3))
+    selection_intensity655 = 2*Isat_655
+    satTime655 = 1.0/(einsteinA_655*(1+selection_intensity655/Isat_655))
+    satDistance655 = vOven*satTime655
+    depletionDistance655 = vOven/einsteinA_655
+    print("\n    655nm Laser Parameters:")
     print(f"    655nm Isat: {Isat_655:.2e} W/m^2")
+    print(f"    Time to Saturate: {satTime655:.2e} s")
+    print(f"    Distance to Saturate: {satDistance655:.2e} m, Distance to Depletion: {depletionDistance655:.2e} m")
 
 
 
     ## Calculate spectra after two passes through 461 pathway
     print("\n--- Case 1: Two Passes through 461nm Ionization Pathway ---")
     goalIsotope = isotopes461[0]  # Target Sr-84 for enrichment
+
     print(f"\n Step 1: Abundances after First Pass (Targeting {goalIsotope['name']})")
-    firstpass_iso461, firstpass461_exitedFraction = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461, selection_intensity, Isat_461)
-    NfirstPass461 = firstpass461_exitedFraction*Nstart*firstpass_iso461[0]['abundance']
-    print(f"    Number of Excited Sr84 after First Pass: {NfirstPass461:.2e} atoms")
+    firstpass_iso461, firstpass461_excited_fraction = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461, selection_intensity461, Isat_461)
+    N_excited_total_step1 = firstpass461_excited_fraction * Nstart
+    N_sr84_step1 = N_excited_total_step1 * firstpass_iso461[0]['abundance']
+    # print(f"    Number of Excited Sr84 after First Pass: {N_sr84_step1:.2e} atoms, {N_sr84_step1/NstartSr84*100:.2f}% of Original Sr84")
     
     print(f"\n Step 2: Abundances after Second Pass (Targeting {goalIsotope['name']})")
-    secondpass_iso461, secondpass461_exitedFraction = calculate_excited_abundances(goalIsotope, firstpass_iso461, linewidth_461, selection_intensity, Isat_461)
-    NsecondPass461 = secondpass461_exitedFraction*NfirstPass461*secondpass_iso461[0]['abundance']
-    print(f"    Number of Excited Sr84 after Second Pass: {NsecondPass461:.2e} atoms")
+    # The input to this step is the *excited* population from the first pass.
+    # The abundances of this population are in `firstpass_iso461`.
+    # The total number of atoms in this population is `N_excited_total_step1`.
+    secondpass_iso461, secondpass461_excited_fraction = calculate_excited_abundances(goalIsotope, firstpass_iso461, linewidth_461, selection_intensity461, Isat_461)
+    N_excited_total_step2 = secondpass461_excited_fraction * N_excited_total_step1
+    N_sr84_step2 = N_excited_total_step2 * secondpass_iso461[0]['abundance']
+    # print(f"    Number of Excited Sr84 after Second Pass: {N_sr84_step2:.2e} atoms, {N_sr84_step2/NstartSr84*100:.2f}% of Original Sr84")
     
 
     # Case 2, Deplete Ground State Sr88 using 689nm excitation
     print("\n--- Case 2: Deplete Ground State Sr88 then use 461nm Ionization Pathway ---")
-    goalIsotope = isotopes461[3]  # Target Sr-84 for enrichment
+    goalIsotope = isotopes689[3]  # Target Sr-88 for depletion
     print(f"\n Step 1: Abundances after First Pass (Targeting {goalIsotope['name']})")
     firstpass_iso689, firstpass689_unexitedFraction = calculate_unexcited_abundances(goalIsotope, isotopes689, linewidth_689, selection_intensity689, Isat_689)
     NfirstPass689 = firstpass689_unexitedFraction*Nstart*firstpass_iso689[0]['abundance']
-    print(f"    Number of unexcited Sr84 after First Pass: {NfirstPass689:.2e} atoms")
+    # print(f"    Number of unexcited Sr84 after First Pass: {NfirstPass689:.2e} atoms, {NfirstPass689/NstartSr84*100:.2f}% of Original Sr84")
     isotopes461_depleted = []
     for iso_461, iso_depleted in zip(isotopes461, firstpass_iso689):
         # Sanity check to make sure we're matching isotopes
@@ -219,9 +253,11 @@ def main():
 
     goalIsotope = isotopes461[0]  # Target Sr-84 for enrichment
     print(f"\n Step 2: Abundances after Second Pass (Targeting {goalIsotope['name']})")
-    secondpass_iso461, secondpass461_exitedFraction = calculate_excited_abundances(goalIsotope, isotopes461_depleted, linewidth_461, selection_intensity, Isat_461)
-    NsecondPass461 = secondpass461_exitedFraction*NfirstPass461*secondpass_iso461[0]['abundance']
-    print(f"    Number of Excited Sr84 after Second Pass: {NsecondPass461:.2e} atoms")
+    secondpass_iso461, secondpass461_excited_fraction = calculate_excited_abundances(goalIsotope, isotopes461_depleted, linewidth_461, selection_intensity461, Isat_461)
+    N_unexcited_total_step1 = firstpass689_unexitedFraction * Nstart
+    N_excited_total_step2 = secondpass461_excited_fraction * N_unexcited_total_step1
+    N_sr84_step2 = N_excited_total_step2 * secondpass_iso461[0]['abundance']
+    # print(f"    Number of Excited Sr84 after Second Pass: {N_sr84_step2:.2e} atoms, {N_sr84_step2/NstartSr84*100:.2f}% of Original Sr84")
 
 
     # Case 3, Deplete Ground State of all non targets isotopes using 689nm excitation
@@ -229,18 +265,23 @@ def main():
     goalIsotope = isotopes689[3]  # Target Sr-88 for depletion
     print(f"\n Step 1: Abundances after First Depletion (Targeting {goalIsotope['name']})")
     firstpass_iso689, firstpass689_unexitedFraction = calculate_unexcited_abundances(goalIsotope, isotopes689, linewidth_689, selection_intensity689, Isat_689)
-    NfirstPass689 = firstpass689_unexitedFraction*Nstart*firstpass_iso689[0]['abundance']
-    print(f"    Number of unexcited Sr84 after First Depletion: {NfirstPass689:.2e} atoms")
+    N_unexcited_total_step1 = firstpass689_unexitedFraction * Nstart
+    N_sr84_step1 = N_unexcited_total_step1 * firstpass_iso689[0]['abundance']
+    # print(f"    Number of unexcited Sr84 after First Depletion: {N_sr84_step1:.2e} atoms, {N_sr84_step1/NstartSr84*100:.2f}% of Original Sr84")
+
     goalIsotope = firstpass_iso689[2]  # Target Sr-87 for depletion
     print(f"\n Step 2: Abundances after Second Depletion (Targeting {goalIsotope['name']})")
     secondpass_iso689, secondpass689_unexitedFraction = calculate_unexcited_abundances(goalIsotope, firstpass_iso689, linewidth_689, selection_intensity689, Isat_689)
-    NsecondPass689 = secondpass689_unexitedFraction*NfirstPass689*secondpass_iso689[0]['abundance']
-    print(f"    Number of unexcited Sr84 after Second Depletion: {NsecondPass689:.2e} atoms")
+    N_unexcited_total_step2 = secondpass689_unexitedFraction * N_unexcited_total_step1
+    N_sr84_step2 = N_unexcited_total_step2 * secondpass_iso689[0]['abundance']
+    # print(f"    Number of unexcited Sr84 after Second Depletion: {N_sr84_step2:.2e} atoms, {N_sr84_step2/NstartSr84*100:.2f}% of Original Sr84")
+
     goalIsotope = secondpass_iso689[1]  # Target Sr-86 for depletion
     print(f"\n Step 3: Abundances after Third Depletion (Targeting {goalIsotope['name']})")
     thirdpass_iso689, thirdpass689_unexitedFraction = calculate_unexcited_abundances(goalIsotope, secondpass_iso689, linewidth_689, selection_intensity689, Isat_689)
-    NthirdPass689 = thirdpass689_unexitedFraction*NsecondPass689*thirdpass_iso689[0]['abundance']
-    print(f"    Number of unexcited Sr84 after Third Depletion: {NthirdPass689:.2e} atoms")
+    N_unexcited_total_step3 = thirdpass689_unexitedFraction * N_unexcited_total_step2
+    N_sr84_step3 = N_unexcited_total_step3 * thirdpass_iso689[0]['abundance']
+    # print(f"    Number of unexcited Sr84 after Third Depletion: {N_sr84_step3:.2e} atoms, {N_sr84_step3/NstartSr84*100:.2f}% of Original Sr84")
 
     isotopes461_depleted = []
     for iso_461, iso_depleted in zip(isotopes461, thirdpass_iso689):
@@ -253,9 +294,10 @@ def main():
 
     goalIsotope = isotopes461[0]  # Target Sr-84 for enrichment
     print(f"\n Step 4: Abundances after Final 461nm Excitation (Targeting {goalIsotope['name']})")
-    finalpass_iso461, finalpass461_exitedFraction = calculate_excited_abundances(goalIsotope, isotopes461_depleted, linewidth_461, selection_intensity, Isat_461)
-    NfinalPass461 = finalpass461_exitedFraction*NthirdPass689*finalpass_iso461[0]['abundance']
-    print(f"    Number of Excited Sr84 after Final Excitation: {NfinalPass461:.2e} atoms")
+    finalpass_iso461, finalpass461_excited_fraction = calculate_excited_abundances(goalIsotope, isotopes461_depleted, linewidth_461, selection_intensity461, Isat_461)
+    N_excited_total_step4 = finalpass461_excited_fraction * N_unexcited_total_step3
+    N_sr84_step4 = N_excited_total_step4 * finalpass_iso461[0]['abundance']
+    # print(f"    Number of Excited Sr84 after Final Excitation: {N_sr84_step4:.2e} atoms, {N_sr84_step4/NstartSr84*100:.2f}% of Original Sr84")
 
 
     # # Case 4, Deplete Ground State of just largest impurities (86Sr, 86Sr) using 689nm excitation
