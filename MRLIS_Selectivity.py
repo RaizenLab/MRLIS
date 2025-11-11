@@ -170,13 +170,13 @@ def main():
     # Natural Linewidth (FWHM) Gamma = A / (2*pi)
     linewidth_461 = (einsteinA_461) / (2 * con.pi) # This is 31.99 MHz
     # This is the saturation intensity of the transition
-    Isat_461 = (con.pi*con.h*con.c*linewidth_461/(3*waveL_461**3))
-    selection_intensity461 = 2*Isat_461
+    Isat_461 = (con.hbar*linewidth_461*(2*con.pi*freq461)**3)/(12*con.pi*con.c**2)
+    selection_intensity461 = Isat_461
     satTime461 = 1.0/(einsteinA_461*(1+selection_intensity461/Isat_461))
     satDistance461 = vOven*satTime461
     depletionDistance461 = vOven/einsteinA_461
     print("\n    461nm Laser Parameters:")
-    print(f"    461nm Isat: {Isat_461:.2e} W/m^2")
+    print(f"    461nm Isat: {Isat_461:.2e} W/m^2, 1.5cm Spot Size Psat: {1000*Isat_461*con.pi*(0.015/2)**2:.2e} mW")
     print(f"    Time to Saturate: {satTime461:.2e} s")
     print(f"    Distance to Saturate: {satDistance461:.2e} m, Distance to Depletion: {depletionDistance461:.2e} m")
 
@@ -184,23 +184,36 @@ def main():
     # Isotope shifts for the 689 nm line (in Hz)
     waveL_689 = 689.41434e-9  # Wavelength for Sr-88 689 nm transition
     freq689 = con.c / waveL_689  # Convert wavelength to frequency (Hz)
-    einsteinA_689 = 4.7e4  # A coefficient for 689 nm transition
+    einsteinA_689 = 4.69e4  # A coefficient for 689 nm transition
     linewidth_689 = einsteinA_689 / (2 * con.pi)  # Natural Linewidth for 689 nm transition
-    Isat_689 = (con.pi*con.h*con.c*linewidth_689/(3*waveL_689**3))
-    selection_intensity689 = 2*Isat_689
+    Isat_689 = (con.hbar*linewidth_689*(2*con.pi*freq689)**3)/(12*con.pi*con.c**2)  # Saturation intensity for 689 nm transition
+    selection_intensity689 = Isat_689
     satTime689 = 1.0/(einsteinA_689*(1+selection_intensity689/Isat_689))
     satDistance689 = vOven*satTime689
     depletionDistance689 = vOven/einsteinA_689
     print("\n    689nm Laser Parameters:")
-    print(f"    689nm Isat: {Isat_689:.2e} W/m^2")
+    print(f"    689nm Isat: {Isat_689:.2e} W/m^2, 1.5cm Spot Size Psat: {1000*Isat_689*con.pi*(0.015/2)**2:.2e} mW")
     print(f"    Time to Saturate: {satTime689:.2e} s")
     print(f"    Distance to Saturate: {satDistance689:.2e} m, Distance to Depletion: {depletionDistance689:.2e} m")
 
-    
+    # Laser Parameters for 688nm excitation
+    waveL_688 = 687.83134e-9  # Wavelength for Sr-88 688 nm transition
+    freq688 = con.c / waveL_688  # Convert wavelength to frequency (Hz)
+    einsteinA_688 = 2.7e7  # A coefficient for 688 nm transition
+    linewidth_688 = einsteinA_688 / (2 * con.pi)  # Natural Linewidth for 688 nm transition
+    Isat_688 = (con.hbar*linewidth_688*(2*con.pi*freq688)**3)/(12*con.pi*con.c**2)
+    selection_intensity688 = Isat_688
+    satTime688 = 1.0/(einsteinA_688*(1+selection_intensity688/Isat_688))
+    satDistance688 = vOven*satTime688
+    depletionDistance688 = vOven/einsteinA_688
+    print("\n    688nm Laser Parameters:")
+    print(f"    688nm Isat: {Isat_688:.2e} W/m^2, 1.5cm Spot Size Psat: {1000*Isat_688*con.pi*(0.015/2)**2:.2e} mW")
+    print(f"    Time to Saturate: {satTime688:.2e} s")
+    print(f"    Distance to Saturate: {satDistance688:.2e} m, Distance to Depletion: {depletionDistance688:.2e} m")
 
     # Isotope shifts for 655 nm line (after 461nm excitation)
     waveL_655 = 655.873e-9  # Wavelength for Sr-88 655 nm transition
-    freq655 = con.c / waveL_655  # Convert wavelength to frequency (Hz
+    freq655 = con.c / waveL_655  # Convert wavelength to frequency (Hz)
     einsteinA_655 = 8.9e7  # A coefficient for 655 nm transition
     linewidth_655 = einsteinA_655 / (2 * con.pi)  # Natural Linewidth for 655 nm transition
     Isat_655 = (con.pi*con.h*con.c*linewidth_655/(3*waveL_655**3))
