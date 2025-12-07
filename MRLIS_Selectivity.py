@@ -141,7 +141,7 @@ def calculate_unexcited_abundances(target_iso, all_isotopes,
 
 def averageV(T,m):
     #vav = np.sqrt((8*con.k*T)/(m*con.pi))
-    vav = np.sqrt((2*con.k*T)/(m))
+    vav = np.sqrt((8*con.k*T)/(m))
     return vav
 
 def main():
@@ -213,7 +213,11 @@ def main():
     print(f"    Time to Saturate: {satTime655:.2e} s")
     print(f"    Distance to Saturate: {satDistance655:.2e} m, Distance to Depletion: {depletionDistance655:.2e} m")
 
-
+    ## Case Zero Sr 88 enrichment
+    goalIsotope = isotopes461[3]
+    print(f"\n Step 1: Abundances after First Pass (Targeting {goalIsotope['name']})")
+    firstpass_iso461, firstpass461_excited_fraction = calculate_excited_abundances(goalIsotope, isotopes461, linewidth_461, selection_intensity461, Isat_461)
+    
 
     ## Calculate spectra after two passes through 461 pathway
     print("\n--- Case 1: Two Passes through 461nm Ionization Pathway ---")

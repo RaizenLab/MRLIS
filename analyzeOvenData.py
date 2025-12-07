@@ -59,7 +59,7 @@ def fit_atomic_beam_profile(x_data, y_data, plot=True, title=None):
         
         # --- 5. Plot the Results (if requested) ---
         if plot:
-            plt.figure(figsize=(10, 6))
+            plt.figure(figsize=(6.5, 4.875))
             
             # --- PLOTTING THE RAW POINTS (NORMALIZED) ---
             # Plot raw data shifted by the fitted center
@@ -88,15 +88,15 @@ def fit_atomic_beam_profile(x_data, y_data, plot=True, title=None):
                      bbox=dict(boxstyle='round,pad=0.5', fc='white', alpha=0.7))
             
             if title:
-                plt.title(title, fontsize=14)
+                plt.title(title, fontsize=16)
             else:
-                plt.title('Atomic Beam Profile Fit', fontsize=14)
+                plt.title('Atomic Beam Profile Fit', fontsize=16)
             
             # --- UPDATE AXIS LABEL ---
-            plt.xlabel('Position Relative to Peak (cm)', fontsize=12)
-            plt.ylabel('Thickness Reading', fontsize=12)
+            plt.xlabel('Position Relative to Peak (cm)', fontsize=14)
+            plt.ylabel('Thickness Reading', fontsize=14)
             plt.legend()
-            plt.tick_params(axis='both', which='major', labelsize=10)
+            plt.tick_params(axis='both', which='major', labelsize=12)
             plt.show()
 
         # --- 6. Return the Results ---
@@ -116,20 +116,20 @@ def fit_atomic_beam_profile(x_data, y_data, plot=True, title=None):
     except RuntimeError as e:
         print(f"Error: The fit did not converge for {title or 'this scan'}. {e}")
         if plot:
-            plt.figure(figsize=(10, 6))
+            plt.figure(figsize=(8, 5))
             plt.scatter(x_data, y_data, label='Raw Data (Fit Failed)', c='red')
-            plt.title(f"{title or 'Scan'} - FIT FAILED", fontsize=14)
-            plt.xlabel('Monitor Position (cm)', fontsize=12)
-            plt.ylabel('Thickness Reading', fontsize=12)
+            plt.title(f"{title or 'Scan'} - FIT FAILED", fontsize=16)
+            plt.xlabel('Monitor Position (cm)', fontsize=14)
+            plt.ylabel('Thickness Reading', fontsize=14)
             plt.legend()
-            plt.tick_params(axis='both', which='major', labelsize=10)
+            plt.tick_params(axis='both', which='major', labelsize=12)
             plt.show()
         return None
     except Exception as e:
         print(f"An unexpected error occurred for {title or 'scan'}: {e}")
         return None
     
-def plot_scan_comparison(main_title, results1, legend1, results2, legend2):
+def plot_scan_comparison(main_title, results1, legend1, results2, legend2, fwhm):
     """
     Plots two fitted Gaussian profiles on the same axes for comparison.
 
@@ -139,7 +139,7 @@ def plot_scan_comparison(main_title, results1, legend1, results2, legend2):
     results2 (dict): The results dictionary from the second fit.
     title2 (str): The title/label for the second scan.
     """
-    plt.figure(figsize=(10, 7))
+    plt.figure(figsize=(7, 4.5))
 
     for res, title, color in [(results1, legend1, 'steelblue'), (results2, legend2, 'orangered')]:
         # --- Calculate Integrated Area ---
@@ -152,9 +152,13 @@ def plot_scan_comparison(main_title, results1, legend1, results2, legend2):
         y_fit = gaussian(x_range, *res['fit_parameters'])
 
         # --- Create the label for the legend ---
-        legend_label = (
-            f"{title}, FWHM: {res['fwhm']:.3f} cm"
-        )
+        if fwhm:
+            legend_label = (
+                f"{title}, $\omega_0$ = {res['fwhm']:.1f}cm"
+            )
+        else:
+            legend_label = (f"{title}")
+
         # f"  Atomic Flux: {area:.2e}"
         # --- Plot the curve, centered at 0 ---
         plt.plot(x_range - res['center'], y_fit, color=color, label=legend_label, linewidth=1.5)
@@ -164,11 +168,11 @@ def plot_scan_comparison(main_title, results1, legend1, results2, legend2):
                     marker='s', color=color, alpha=0.6, s=40)
 
     plt.title(main_title, fontsize=14)
-    plt.xlabel("Position Relative to Peak (cm)", fontsize=12)
-    plt.ylabel("Atomic Flux (atom/sec)", fontsize=12)
-    plt.legend(loc='upper right', fontsize=10)
+    plt.xlabel("Position Relative to Peak (cm)", fontsize=14)
+    plt.ylabel("Atomic Flux (atom/sec)", fontsize=14)
+    plt.legend(loc='upper right', fontsize=12)
     plt.xlim(-1,1)
-    plt.tick_params(axis='both', which='major', labelsize=10)
+    plt.tick_params(axis='both', which='major', labelsize=12)
     plt.show()
 
 
@@ -224,12 +228,12 @@ def main():
     # --- Add Comparison Plots ---
     if len(all_results) == 3:
         # Compare Scan 2 and Scan 3
-        plot_scan_comparison("Atomic Flux vs. Longitudinal Deflection (9cm separation, T = 440C)", all_results[1], "At Cavity",
-                             all_results[2], "At First Window")
+        plot_scan_comparison("Atomic Flux vs. Longitudinal Deflection (T = 440C)", all_results[2], "z = 0cm",
+                             all_results[1], "z = 9cm", True)
 
         # Compare Scan 1 and Scan 2
         plot_scan_comparison("Atomic Flux vs. Oven Temperature (at Cavity)", all_results[1], "T = 440C",
-                             all_results[0], "T = 480C")
+                             all_results[0], "T = 480C", False)
 
 if __name__ == "__main__":
     main()

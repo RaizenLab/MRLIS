@@ -50,7 +50,7 @@ temps = np.linspace(300, 800, 500)
 pvap_vals = [Pvap(t) for t in temps]
 lambda_vals = [lambda_mf(t) for t in temps]
 
-fig = plt.figure(figsize=(10, 5))
+fig = plt.figure(figsize=(6.5, 4.875))
 gs = GridSpec(1, 2, figure=fig)
 
 # Vapor Pressure Plot
@@ -94,7 +94,7 @@ def Fluxtotal(temp):
 no_vals = [no(t) for t in temps]
 vav_vals = [vav(t) for t in temps]
 
-fig = plt.figure(figsize=(10, 5))
+fig = plt.figure(figsize=(6.5, 4.875))
 gs = GridSpec(1, 2, figure=fig)
 
 # Atomic Density Plot
@@ -118,7 +118,7 @@ plt.show()
 flux1cap_vals = [Flux1cap(t) for t in temps]
 fluxtotal_vals = [Fluxtotal(t) for t in temps]
 
-fig = plt.figure(figsize=(10, 5))
+fig = plt.figure(figsize=(6.5, 4.875))
 gs = GridSpec(1, 2, figure=fig)
 
 # Single Capillary Flux
@@ -152,7 +152,7 @@ def Nca1(temp):
 ifor_vals = [Ifor(t) for t in temps]
 nca1_vals = [Nca1(t) for t in temps]
 
-fig = plt.figure(figsize=(10, 5))
+fig = plt.figure(figsize=(6.5, 4.875))
 gs = GridSpec(1, 2, figure=fig)
 
 # Peak Intensity
@@ -180,7 +180,7 @@ def Totaltime(temp):
 # Plotting Total Working Time
 totaltime_vals = [Totaltime(t) for t in temps]
 
-plt.figure(figsize=(5, 5))
+plt.figure(figsize=(6.5, 4.875))
 plt.semilogy(temps, totaltime_vals, 'b-')
 plt.xlabel('T (°C)', fontsize=14, fontweight='bold')
 plt.ylabel('Total working time (Months)', fontsize=14, fontweight='bold')
@@ -214,7 +214,7 @@ xx = np.linspace(-1.5, 1.5, 1000)
 xx = xx[xx != 0]
 j_vals = [j(x, beta, alpha) for x in xx]
 
-plt.figure(figsize=(5, 5))
+plt.figure(figsize=(6.5, 4.875))
 plt.plot(xx, j_vals, 'b-')
 plt.xlabel('Half angle θ (Radians)', fontsize=14, fontweight='bold')
 plt.ylabel('Angular distribution single channel', fontsize=14, fontweight='bold')
@@ -229,7 +229,7 @@ def II(theta):
 xxx = np.linspace(-1.5, 1.5, 1000)
 II_vals = [II(x) for x in xxx]
 
-plt.figure(figsize=(5, 5))
+plt.figure(figsize=(6.5, 4.875))
 plt.plot(xxx, II_vals, 'b-')
 plt.xlabel('Half angle θ (Radians)', fontsize=14, fontweight='bold')
 plt.ylabel('Oven Flux (atoms/s/sr)', fontsize=14, fontweight='bold')

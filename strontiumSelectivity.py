@@ -198,11 +198,15 @@ def plot_isotope_spectra(isotopes, freq, linewidth):
     colors = ['blue', 'green', 'red', 'purple']
 
     # --- Plotting Section ---
-    plt.figure(figsize=(10, 6))
-    plt.title("Absorption Profiles for Strontium Isotopes", fontsize=14)
+    mult = 1.25
+    plt.figure(figsize=(mult*6.5, mult*4.875))
+    plt.title("Absorption Profiles for Strontium Isotopes", fontsize=16)
     # X-axis is frequency shift from Sr-88, in GHz
-    plt.xlabel("Frequency Shift from Sr-88 (GHz)", fontsize=12)
-    plt.ylabel("Normalized Absorption (arb. units)", fontsize=12)
+    plt.xlabel("Frequency Shift from Sr-88 (GHz)", fontsize=14)
+    plt.ylabel("Normalized Absorption (arb. units)", fontsize=14)
+
+    # Set the font size for the tick labels on both axes
+    plt.tick_params(axis='both', which='major', labelsize=12)
 
     # Plot each isotope's profile
     for i, isotope in enumerate(isotopes):
@@ -229,9 +233,9 @@ def plot_isotope_spectra(isotopes, freq, linewidth):
 
     # Zoom in on the x-axis to see the peaks clearly
     plt.xlim(-0.4, 0.25)
-    plt.ylabel("Relative Absorption (Abundance * Profile)", fontsize=12)
-    plt.legend(loc="upper right", fontsize=10)
-    plt.grid(True, linestyle=':', alpha=0.6) # Add a light grid
+    plt.ylabel("Relative Absorption (arb. units)", fontsize=14)
+    plt.legend(loc="upper left", fontsize=12)
+    # plt.grid(True, linestyle=':', alpha=0.6) # Add a light grid
     plt.tight_layout() # Adjust plot to prevent label cutoff
     plt.show()
 
@@ -428,7 +432,7 @@ def main():
     #     print(f"    {name}: {abundance * 100:.4f}%")
     
     # --- Plotting Section ---
-    # plot_isotope_spectra(isotopes461, freq461, linewidth_461)
+    plot_isotope_spectra(isotopes461, freq461, linewidth_461)
 
 if __name__ == "__main__":
     main()

@@ -62,7 +62,7 @@ def main():
     
     # Calculate total absorption signal
     total_abs = np.zeros_like(frequencies)
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(1.15*6.5, 1.15*4.875))
 
     for isotope in isotopes:
         mass = isotope["mass"]
@@ -84,8 +84,8 @@ def main():
         total_abs += abs_signal
 
     
-    # Plot total absorption signal first (background)
-    plt.plot(frequencies / 1e9, total_abs, label="Total Signal", color="black", 
+    # Plot total absorption signal first (background), label="Total Signal"
+    plt.plot(frequencies / 1e9, total_abs, color="black", 
              linewidth=2.5, alpha=0.5, zorder=1)
     
     # Colors for individual isotope plots
@@ -102,19 +102,22 @@ def main():
         doppler_shift = doppler(w0, vOven, thetaMax)
         abs_signal = absorptionSignal(frequencies, w0, linewidth, doppler_shift)
         abs_signal *= abundance
-        plt.plot(frequencies / 1e9, abs_signal, label=f"{name} (shift: {iso_shift/1e6:.1f} MHz)", 
+        plt.plot(frequencies / 1e9, abs_signal, label=f"{name}", 
                  linestyle='--', color=colors[i], linewidth=1.5, alpha=0.9, zorder=2)
+        plt.axvline(x=(w0) / 1e9, color=colors[i], linestyle='--', linewidth=1, alpha=0.8)
+        #  (shift: {iso_shift/1e6:.1f} MHz)
     #  Plot settings
-    plt.xlabel("Frequency (GHz)", fontsize=12)
-    plt.ylabel("Absorption Signal (arb. units)", fontsize=12)
-    plt.title("Absorption Spectra for Strontium Isotopes (Relative to Sr-88)", fontsize=14)
-    plt.legend(loc="upper right", fontsize=10)
+    plt.xlabel("Frequency (GHz)", fontsize=14)
+    plt.ylabel("Absorption Signal (arb. units)", fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=12)
+    plt.title("Absorption Spectra for Strontium Isotopes (Relative to Sr-88)", fontsize=16)
+    plt.legend(loc="upper right", fontsize=12)
     # plt.grid(True, which="both", linestyle='-', alpha=0.5)
     # plt.minorticks_on()
 
     
     # New plot for isotopeSpectra
-    plt.figure(figsize=(10, 6))
+    # plt.figure(figsize=(6.5, 4.875))
     total_spectra = np.zeros_like(frequencies)
 
     for isotope in isotopes:
@@ -129,23 +132,23 @@ def main():
         spectra *= abundance  # Weight by abundance
         total_spectra += spectra
 
-    # Plot total isotope spectra (background)
-    plt.plot(frequencies / 1e9, total_spectra, label="Total Isotope Spectra", color="black", 
-             linewidth=2.5, alpha=0.5, zorder=1)
+    # # Plot total isotope spectra (background)
+    # plt.plot(frequencies / 1e9, total_spectra, label="Total Isotope Spectra", color="black", 
+    #          linewidth=2.5, alpha=0.5, zorder=1)
 
-    # Plot individual isotope spectra
-    for i, isotope in enumerate(isotopes):
-        mass = isotope["mass"]
-        iso_shift = isotope["shift"]
-        abundance = isotope["abundance"]
-        name = isotope["name"]
-        w0 = freq + iso_shift
-        vOven = averageV(ovenTemp, mass)
-        doppler_shift = doppler(w0, vOven, thetaMax)
-        spectra = isotopeSpectra(frequencies, w0, linewidth, doppler_shift)
-        spectra *= abundance
-        plt.plot(frequencies / 1e9, spectra, label=f"{name} (shift: {iso_shift/1e6:.1f} MHz)", 
-                 linestyle='--', color=colors[i], linewidth=1.5, alpha=0.9, zorder=2)
+    # # Plot individual isotope spectra
+    # for i, isotope in enumerate(isotopes):
+    #     mass = isotope["mass"]
+    #     iso_shift = isotope["shift"]
+    #     abundance = isotope["abundance"]
+    #     name = isotope["name"]
+    #     w0 = freq + iso_shift
+    #     vOven = averageV(ovenTemp, mass)
+    #     doppler_shift = doppler(w0, vOven, thetaMax)
+    #     spectra = isotopeSpectra(frequencies, w0, linewidth, doppler_shift)
+    #     spectra *= abundance
+    #     plt.plot(frequencies / 1e9, spectra, label=f"{name} (shift: {iso_shift/1e6:.1f} MHz)", 
+    #              linestyle='--', color=colors[i], linewidth=1.5, alpha=0.9, zorder=2)
         
     plt.show()
 

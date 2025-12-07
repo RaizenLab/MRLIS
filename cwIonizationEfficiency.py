@@ -48,7 +48,7 @@ def main():
         nu = frontTerm * mG
         ionEff.append(float(1 - nu))  # Convert to float to ensure numerical value
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(6.5, 4.875))
     plt.plot(Power, ionEff, color="black", linewidth=2.5)
     plt.xlabel("Laser Power (W)")
     plt.ylabel("Ionization Efficiency")

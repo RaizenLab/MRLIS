@@ -177,7 +177,7 @@ except Exception as e:
     print(f"Fit failed: {e}")
 
 # Plot heating cycle
-fig, ax1 = plt.subplots(figsize=(12, 6))
+fig, ax1 = plt.subplots(figsize=(6.5, 4.875))
 
 ax1.set_xlabel('Time (min)')
 ax1.set_ylabel('Temperature (°C)')
@@ -189,7 +189,7 @@ fig.legend(loc='upper right', bbox_to_anchor=(0.9, 0.9))
 plt.show()
 
 # Plot cooling cycle
-fig, ax1 = plt.subplots(figsize=(12, 6))
+fig, ax1 = plt.subplots(figsize=(6.5, 4.875))
 
 ax1.set_xlabel('Time (min)')
 ax1.set_ylabel('Temperature (°C)')
