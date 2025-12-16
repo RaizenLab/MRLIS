@@ -139,6 +139,7 @@ def plot_results(sol):
 def calculate_stark(i,w):
     return (i*con.e**2)/(2*con.c*con.epsilon_0*con.m_e*w**2)
 
+
 def calculate_rabi2(i,w, crossSec, linWidth):
     return 0.5*np.sqrt((crossSec*linWidth*i)/(con.hbar*w))
 
