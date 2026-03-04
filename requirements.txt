@@ -1,0 +1,11 @@
+# This file contains all of the necessary imports to 
+# have this package run.
+
+# To get started, it's best to just execute
+# `pip install -r requirements.txt`
+
+numpy
+matplotlib
+scipy
+sympy
+joblib
