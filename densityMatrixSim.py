@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import scipy.constants as con
 from multiprocessing import Pool
 
+# Follows derivation from "Application of the density matrix method to multiphoton ionization of molecules"
 def master_equations(t, y, params):
     """
     Computes the derivatives for the system of ODEs (Eq 4.15 - 4.20).
@@ -121,7 +122,7 @@ def plot_results(sol):
     yield_t = 1 - pop_gg - pop_aa - pop_bb
 
     # Create a figure with 3 subplots
-    fig, ax1 = plt.figure
+    fig, ax1 = plt.figure()
     
     # Plot 1: Populations
     ax1.plot(t, pop_gg, label=r'$\rho_{gg}$')
@@ -141,6 +142,16 @@ def calculate_stark(i,w):
 
 def calculate_rabi2(i,w, crossSec, linWidth):
     return 0.5*np.sqrt((crossSec*linWidth*i)/(con.hbar*w))
+
+def calculate_interaction_time(T_celsius=530.0, L_cm=1.5, mass_amu=87.62):
+    T_kelvin = T_celsius + 273.15
+    L_meters = L_cm / 100.0
+    m_kg = mass_amu * con.atomic_mass
+    
+    v_avg = np.sqrt((8 * con.k * T_kelvin) / (np.pi * m_kg))
+    t_int = L_meters / v_avg
+    
+    return v_avg, t_int
 
 # --- CASE 1: Power Scaling ---
 def run_case_1_time_dynamics(base_params, w_2, crossPeak, linewidth405):
@@ -223,7 +234,7 @@ def main():
         'del_ba': 0.0,
     }
 
-    # run_case_1_time_dynamics(base_params, w_2, crossPeak, linewidth405)
+    run_case_1_time_dynamics(base_params, w_2, crossPeak, linewidth405)
 
 if __name__ == "__main__":
     main()
