@@ -37,8 +37,9 @@ class isotope:
 def main():
     # A = 2.6e3
     # Gamma = A / (np.pi * 2)
-    # freq = C.c / 657.278e-9
-    # Ca = np.array([isotope(r"$^{40}$Ca", 39.962590850, 0, 0.9694, freq), isotope(r"$^{42}$Ca", 41.95861778, 509.5e6, 0.0065, freq), isotope(r"$^{43}$Ca", 42.95876638, 782.2e6, 0.0014, freq), isotope(r"$^{44}$Ca", 43.95548149, 996.2e6, 0.0209, freq), isotope(r"$^{46}$Ca", 45.9536877, 1481.1e6, 4e-5, freq), isotope(r"$^{48}$Ca", 47.952522654, 1922.5e6, 0.0019, freq)])
+    freq = C.c / 657.278e-9
+    Ca = np.array([isotope(r"$^{40}$Ca", 39.962590850, 0, 0.9694, freq), isotope(r"$^{42}$Ca", 41.95861778, 509.5e6, 0.0065, freq), isotope(r"$^{43}$Ca", 42.95876638, 782.2e6, 0.0014, freq), isotope(r"$^{44}$Ca", 43.95548149, 996.2e6, 0.0209, freq), isotope(r"$^{46}$Ca", 45.9536877, 1481.1e6, 4e-5, freq), isotope(r"$^{48}$Ca", 47.952522654, 1922.5e6, 0.0019, freq)])
+    print(Ca[0].mass)
     # freqs = np.linspace(freq - .25e9, freq + 5e9, 100000, endpoint = True)
     # tot_abs = np.zeros_like(freqs)
     # for iso in Ca:
