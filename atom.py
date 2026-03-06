@@ -4,24 +4,31 @@ import numpy as np
 import scipy.constants as C
 import matplotlib.pyplot as plt
 class atom:
-    def __init__(self, f, transition_wl, A, oven_T = 650 + 273.15, theta = 0.02609):
+    def __init__(self, f = "", transition_wl = 657.278e-9, A = 2.6e3, oven_T = 650, vap_p_consts = [15.133, 9517, 1.4030], theta = 0.02609, melting_temp = 1115, diameter = 197e-12):
         self.name = f[:-4]
         self.wl = transition_wl
         self.freq = C.c / self.wl
         self.A = A
         self.nat_lw = A / (2 * np.pi)
-        self.T = oven_T
+        self.T = oven_T + 273.15
         self.theta = theta
         self.isotopes = dict()
         self.headers = []
-        with open(f, newline = "") as f:
-            r = csv.reader(f, delimiter = ",")
-            for row in r:
-                if row[0] == "Isotope #":
-                    self.headers = row
-                    continue
-                self.isotopes[row[0]] = iso.isotope(r"$^{" + row[0] + r"}$" + self.name, *list(map(float, row[1:])), C.c / self.wl)
-            f.close()
+        self.melt = melting_temp + 273.15
+        self.a, self.b, self.c = vap_p_consts
+        self.d = diameter
+        if f != "":
+            try:
+                with open(f, newline = "") as f:
+                    r = csv.reader(f, delimiter = ",")
+                    for row in r:
+                        if row[0] == "Isotope #":
+                            self.headers = row
+                            continue
+                        self.isotopes[row[0]] = iso.isotope(r"$^{" + row[0] + r"}$" + self.name, *list(map(float, row[1:])), C.c / self.wl)
+                    f.close()
+            except:
+                print(f"Error occured in reading atom data file, {f}")
         pass
     def __str__(self):
         return "".join([str(x) for x in list(self.isotopes.values())])
@@ -38,7 +45,8 @@ class atom:
                 print(f"Index {key} is not in {self.name}")
     def __len__(self):
         return len(self.isotopes.keys())
-    def plot_spectra(self, f_min, f_max, res = 1000, show_transitions = False, total_spectra = False, indiv_spectra = True, ax = None, figsize = (10, 6)):
+    def plot_spectra(self, f_min, f_max, res = 1000, show_transitions = False, total_spectra = False, indiv_spectra = True, ax = None, figsize = (10, 6), **kwargs):
+        # Divide this into multple plotting functions
         if ax == None:
             fig, ax = plt.subplots(1, 1, figsize = figsize)
         else:
@@ -58,7 +66,8 @@ class atom:
             ax.plot(freqs / 1e9, t_spec, label = "Total Spectra")
         ax.set_title(f"Isotope Spectra for {self.name} Isotopes, Relative to {self[int(np.where(np.array([self[i].shift for i in range(len(self))]) == 0)[0][0])].name}")
         return fig, ax
-    def plot_absorp_signal(self, f_min, f_max, res = 1000, show_transitions = False, total_absorp = False, indiv_sig = True, ax = None, figsize = (10, 6)):
+    def plot_absorp_signal(self, f_min, f_max, res = 1000, show_transitions = False, total_absorp = False, indiv_sig = True, ax = None, figsize = (10, 6), **kwargs):
+        # Divide this into multple plotting functions
         if ax == None:
             fig, ax = plt.subplots(1, 1, figsize = figsize)
         else:
