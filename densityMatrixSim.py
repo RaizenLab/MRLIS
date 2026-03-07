@@ -137,8 +137,10 @@ def plot_results(sol):
     plt.tight_layout()
     plt.show()
     
-def calculate_stark(i,w):
-    return (i*con.e**2)/(2*con.c*con.epsilon_0*con.m_e*w**2)
+def calculate_stark(i, w):
+    # Energy must be divided by hbar to yield angular frequency
+    energy_joules = (i * con.e**2) / (2 * con.c * con.epsilon_0 * con.m_e * w**2)
+    return energy_joules / con.hbar
 
 def calculate_rabi2(i,w, crossSec, linWidth):
     return 0.5*np.sqrt((crossSec*linWidth*i)/(con.hbar*w))
@@ -153,32 +155,47 @@ def calculate_interaction_time(T_celsius=530.0, L_cm=1.5, mass_amu=87.62):
     
     return v_avg, t_int
 
-# --- CASE 1: Power Scaling ---
-def run_case_1_time_dynamics(base_params, w_2, crossPeak, linewidth405):
+def calculate_ponderomotive_shift(intensity, omega):
+    """Calculates the free-electron AC Stark shift (applicable to the continuum/autoionizing state)."""
+    energy_joules = (intensity * con.e**2) / (2 * con.c * con.epsilon_0 * con.m_e * omega**2)
+    return energy_joules / con.hbar
+
+def calculate_polarizability_shift(intensity, alpha_si):
+    """Calculates the AC Stark shift for a bound state given its dynamic polarizability in SI units."""
+    energy_joules = - (alpha_si * intensity) / (2 * con.c * con.epsilon_0)
+    return energy_joules / con.hbar
+
+# --- CASE 1: Time Dynamics ---
+def run_time_dynamics(base_params, w_2, crossPeak, linewidth405):
     print("\n--- Running Case 1: Time Dynamics ---")
     
-    # Time settings
     t_end = 100e-6
     t_points = 500
     t_span = (0, t_end)
     t_eval = np.linspace(0, t_end, t_points)
 
-    # Variations (Ionization Laser Power)
     base_I2 = 5658.84
     i2_values = [1*base_I2, 10*base_I2, 100*base_I2] 
+    
+    alpha_g_si = -1.0894e-38
+    alpha_a_nonres_si = 0.0 
 
     plt.figure(figsize=(10, 6))
 
     for val in i2_values:
-        # Update Parameters
         current_params = base_params.copy()
-        current_params['del_ag'] = calculate_stark(val, w_2)
-        current_params['del_ba'] = calculate_stark(val, w_2)
+        
+        # Consistent detuning logic
+        shift_g = calculate_polarizability_shift(val, alpha_g_si)
+        shift_a = calculate_polarizability_shift(val, alpha_a_nonres_si)
+        shift_b = calculate_ponderomotive_shift(val, w_2)
+
+        current_params['del_ag'] = shift_a - shift_g
+        current_params['del_ba'] = shift_b - shift_a
+        current_params['del_bg'] = current_params['del_ag'] + current_params['del_ba']
         current_params['rabi_2'] = calculate_rabi2(val, w_2, crossPeak, linewidth405)
         
-        lbl = f"P = {val/base_I2:.0f} W"
-        print(f"Simulating Time Dynamics: {lbl}")
-
+        lbl = f"P_ratio = {val/base_I2:.0f}"
         sol = run_simulation(current_params, t_span, t_eval)
 
         if sol.success:
@@ -186,17 +203,80 @@ def run_case_1_time_dynamics(base_params, w_2, crossPeak, linewidth405):
             pop_aa = np.real(sol.y[1])
             pop_bb = np.real(sol.y[2])
             yield_ion = 1.0 - (pop_gg + pop_aa + pop_bb)
-
-            # Plot Ion Yield only to keep graph clean
-            # plt.plot(sol.t*1e6, pop_aa, label=r'$\rho_{aa}$'+lbl, color = 'red')
             plt.plot(sol.t*1e6, yield_ion, label='Ions, '+lbl)
-        else:
-            print(f"Run failed for {lbl}")
 
     plt.title("Case 1: Ion Yield over Time")
     plt.xlabel(r"Time ($\mu$s)")
     plt.ylabel("Ion Population")
     plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+# --- Case 2: Power Scaling ---
+def run_power_scaling(base_params, w_2, crossPeak, linewidth405, t_int):
+    points = 20
+    powers = np.logspace(-1, 2, points) 
+    yields = []
+    bar_length = 20
+
+    t_span = (0, t_int)
+    t_eval = [t_int]
+    
+    beam_radius_m = 0.015 / 2.0
+    beam_area_m2 = np.pi * (beam_radius_m)**2
+    
+    # Pre-calculated 405 nm polarizability for the 5s^2 1S0 ground state
+    # From Safronova, M. S., et al. "Blackbody-radiation shift in the Sr optical atomic clock." Physical Review A 87.012509 (2013)
+    alpha_g_si = -1.0894e-38
+    
+    # The non-resonant background polarizability of the 5s5p 1P1 state. 
+    # The resonant Fano interaction is handled by the master equations.
+    alpha_a_nonres_si = 0.0 
+
+    for i, power in enumerate(powers):
+        intensity = power / beam_area_m2
+        
+        current_params = base_params.copy()
+        
+        # Ground state and intermediate state detunings driven by bound-state polarizabilities
+        shift_g = calculate_polarizability_shift(intensity, alpha_g_si)
+        shift_a = calculate_polarizability_shift(intensity, alpha_a_nonres_si)
+        current_params['del_ag'] = shift_a - shift_g
+        
+        # Autoionizing state detuning driven by the free-electron ponderomotive shift
+        shift_b = calculate_ponderomotive_shift(intensity, w_2)
+        current_params['del_ba'] = shift_b - shift_a
+        
+        # Total two-photon detuning
+        current_params['del_bg'] = current_params['del_ag'] + current_params['del_ba']
+        
+        current_params['rabi_2'] = calculate_rabi2(intensity, w_2, crossPeak, linewidth405)
+
+        sol = run_simulation(current_params, t_span, t_eval)
+        
+        if sol.success:
+            pop_gg = np.real(sol.y[0, -1])
+            pop_aa = np.real(sol.y[1, -1])
+            pop_bb = np.real(sol.y[2, -1])
+            yield_ion = 1.0 - (pop_gg + pop_aa + pop_bb)
+            yields.append(yield_ion)
+        else:
+            yields.append(0.0)
+
+        progress = (i + 1) / points
+        filled = int(bar_length * progress)
+        bar = '█' * filled + '-' * (bar_length - filled)
+        percent = int(progress * 100)
+        
+        print(f"\r[{bar}] {percent}% | Step {i + 1}/{points} | P: {power:6.2f} W", end='', flush=True)
+
+    print("\n--- Simulation Complete ---")
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    ax1.plot(powers, yields, marker='o', linestyle='-', color='blue')
+    ax1.set_title("Ionization Yield vs. Autoionization Laser Power")
+    ax1.set_xlabel("Laser Power (W)")
+    ax1.set_ylabel("Ion Yield")
+    ax1.grid(True, which="both", ls="--")
     plt.tight_layout()
     plt.show()
 
@@ -213,28 +293,25 @@ def main():
     lambda_2 = 405.16e-9 # From https://physics.nist.gov/PhysRefData/ASD/lines_form.html (Sr-I)
     linewidth405 = 2*con.pi*45*con.c*100
     w_2 = 2*con.pi*con.c/lambda_2
-    I2 = 5658.84 # 1W with 1.5cm spot size
+    I2 = 5658.84 # 1W with 1.5cm diameter spot size
     crossPeak = 5.6e-19 # Peak cross section in m^2
     rabi405 = calculate_rabi2(I2,w_2,crossPeak,linewidth405)
-    
-    delStark = calculate_stark(I2,w_2)
-    Natom = 1e14
-    delT = 340e-6 # Time it takes for an atom to pass through the light interaction field
 
-    # --- 1. CONFIGURATION (Edit Constraints Here) ---
-    #  Base dictionary
+    v_avg, t_int = calculate_interaction_time(T_celsius=530.0, L_cm=1.5)
+
     base_params = {
         'rabi_1': rabi461,
         'rabi_2': rabi405,
         'q': 6.8,
         'gamma_1': einstein461,
         'gamma_2': linewidth405,
-        'del_ag': 0.0,       # Laser 1 on resonance
+        'del_ag': 0.0, 
         'del_bg': 0.0,
         'del_ba': 0.0,
     }
 
-    run_case_1_time_dynamics(base_params, w_2, crossPeak, linewidth405)
+    # run_time_dynamics(base_params, w_2, crossPeak, linewidth405)
+    run_power_scaling(base_params, w_2, crossPeak, linewidth405, t_int)
 
 if __name__ == "__main__":
     main()

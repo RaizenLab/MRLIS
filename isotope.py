@@ -24,7 +24,7 @@ class isotope:
     
     def spectra(self, freqs, w0, lw, dshift):
         return self.abund / ((lw / 2) ** 2 + (freqs - w0 + dshift) ** 2)
-    def absorp_sig(self, freqs, w0, lw, dshift):
+    def diff_absorp_sig(self, freqs, w0, lw, dshift):
         absMax = (lw / 2) ** 2 + (freqs - w0 + dshift) ** 2
         absMin = (lw / 2) ** 2 + (freqs - w0 - dshift) ** 2
         return (4 * dshift * (w0 - freqs)) * self.abund / (absMax * absMin)
