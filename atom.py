@@ -17,6 +17,7 @@ class atom:
         self.melt = melting_temp + 273.15
         self.a, self.b, self.c = vap_p_consts
         self.d = diameter
+        self.sigma = np.pi * np.power(diameter, 2)
         if f != "":
             try:
                 with open(f, newline = "") as f:
