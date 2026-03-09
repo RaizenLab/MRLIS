@@ -12,7 +12,7 @@ class Isotope:
         self.abundance = abundance
 
 def averageV(T,m):
-    vav = np.sqrt((2*con.k*T)/(m))
+    vav = np.sqrt((8*con.k*T)/(np.pi *m))
     return vav
 
 def Saturation(dF, wL):
@@ -25,9 +25,11 @@ def main():
     ionLaser = 405.16e-9 #Sr I: 5s5p 1p1 --> 5p2 1D2 (Autoionizing) [m]
     einsteinA = 2.01e8 # From NIST, [s^-1]
     d = 0.015 # Diameter of laser beams [m]
-    crossBarns = 1.2*5450e6 # Ionization cross-section [Barns]
+    # crossBarns = 1.2*5450e6 # Ionization cross-section [Barns]
+    crossBarns = 5600e6 # Ionization cross-section [Barns]
     crossSi = crossBarns*1e-28 # Ionization cross-section [m^2]
-    Toven = 630+273.15 # Temperature of the Oven at the exit aperature of capillaries [K]
+    # crossSi = 5.6e-19 # Peak cross section in m^2, from https://journals.aps.org/pra/abstract/10.1103/PhysRevA.101.022702
+    Toven = 530+273.15 # Temperature of the Oven at the exit aperature of capillaries [K]
     sr84 = Isotope(mass=83.913419 * con.atomic_mass, shift=-270.8e6, abundance=0.0056)
 
     ## Experimental Parameters from Calculations

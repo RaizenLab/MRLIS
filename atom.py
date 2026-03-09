@@ -78,11 +78,11 @@ class atom:
             t_abs = np.zeros_like(freqs)
         for key in self.isotopes.keys():
             if indiv_sig:
-                ax.plot(freqs / 1e9, self[key].absorp_sig(freqs, self[key].freq, self.nat_lw, self[key].doppler(self[key].freq, self[key].average_vel(self.T), self.theta)), label = self[key].name)
+                ax.plot(freqs / 1e9, self[key].diff_absorp_sig(freqs, self[key].freq, self.nat_lw, self[key].doppler(self[key].freq, self[key].average_vel(self.T), self.theta)), label = self[key].name)
             if show_transitions:
                 ax.axvline(self[key].freq / 1e9, ls = "--")
             if total_absorp:
-                t_abs += self[key].absorp_sig(freqs, self[key].freq, self.nat_lw, self[key].doppler(self[key].freq, self[key].average_vel(self.T), self.theta))
+                t_abs += self[key].diff_absorp_sig(freqs, self[key].freq, self.nat_lw, self[key].doppler(self[key].freq, self[key].average_vel(self.T), self.theta))
         if total_absorp:
             ax.plot(freqs / 1e9, t_abs, label = "Total Spectra")
         ax.set_title(f"Absorption Spectra for {self.name} Isotopes, Relative to {self[int(np.where(np.array([self[i].shift for i in range(len(self))]) == 0)[0][0])].name}")
@@ -91,14 +91,15 @@ class atom:
 def main():
     Ca = atom("Ca.csv", 657.278e-9, 2.6e3, oven_T = 600 + 273.15)
     fig, ax = Ca.plot_spectra(Ca.freq - 0.1e9, Ca.freq + 2.5e9, 1000000, True, True)
-    plt.xscale("log")
-    plt.yscale("log")
+    # plt.xscale("log")
+    # plt.yscale("log")
     # fig, ax = Ca.plot_absorp_signal(Ca.freq - 0.1e9, Ca.freq + 2.5e9, 1000000, True, True, False)
     plt.legend()
     plt.show()
-    # Sr = atom("Sr.csv", 460.7333e-9, 2.01e8)
-    # fig, ax = Sr.plot_spectra(Sr.freq - 0.5e9, Sr.freq + 0.5e9, 1000000, True, True)
-    # plt.legend()
+    Sr = atom("Sr.csv", 460.7333e-9, 2.01e8)
+    # fig, ax = Sr.plot_absorp_signal(Sr.freq - 0.5e9, Sr.freq + 0.5e9, 1000000, True, True)
+    fig, ax = Sr.plot_spectra(Sr.freq - 0.5e9, Sr.freq + 0.5e9, 1000000, True, True)
+    plt.legend()
     plt.show()
 if __name__ == "__main__":
     main()
