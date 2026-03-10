@@ -3,6 +3,7 @@ from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import scipy.constants as con
 from joblib import Parallel, delayed
+from sympy import meijerg, N
 
 # Follows derivation from "Application of the density matrix method to multiphoton ionization of molecules"
 def master_equations(t, y, params):
@@ -52,48 +53,70 @@ def master_equations(t, y, params):
 
     # 4. Calculate Derivatives (moving LHS terms to RHS)
     
-    # Eq 4.15
+    # --- Eq 4.15 ---
     d_rho_gg = - 2 * np.imag(rabi_1 * rho_ag) + gamma_1 * rho_aa
 
-    # Eq 4.16
+    # --- Eq 4.16 ---
     d_rho_aa = (
          2 * np.imag(rabi_1 * rho_ag)
         - 2 * np.imag(rabi_2 * term_q_minus * rho_ba)
         - gamma_1 * rho_aa
     )
 
-    # Eq 4.17
+    # --- Eq 4.17 ---
     d_rho_bb = (
          2 * np.imag(rabi_2 * term_q_plus * rho_ba)
         - gamma_2 * rho_bb
     )
 
-    # Eq 4.18
+    # --- Eq 4.18 ---
     # Coeff for rho_ag term
-    
+    # without spontaneous emission
+    # d_rho_ag = (
+    #     -1j*del_ag*rho_ag
+    #     + 1j*rabi_1*(rho_gg - rho_aa)
+    #     + 1j*rabi_2*term_q_minus*rho_bg
+    # )
+
+    # with spontaneous emission as per Metcalf Laser Cooling and Trapping
     d_rho_ag = (
-        -1j*del_ag*rho_ag
+        -(1j * del_ag + gamma_1 / 2)*rho_ag
         + 1j*rabi_1*(rho_gg - rho_aa)
         + 1j*rabi_2*term_q_minus*rho_bg
     )
 
-    # Eq 4.19
+    # --- Eq 4.19 ---
     # Coeff for rho_bg term
-    
+    # without spontaneous emission
+    # d_rho_bg = (
+    #     -1*(1j*del_bg+gamma_2/2)*rho_bg
+    #     +1j*rabi_2*term_q_minus*rho_ag
+    #     -1j*rabi_1*rho_ba
+    # )
+
+    # with spontaneous emission as per Metcalf Laser Cooling and Trapping
     d_rho_bg = (
-        -1*(1j*del_bg+gamma_2/2)*rho_bg
+        -(1j * del_bg + gamma_2 / 2)*rho_bg
         +1j*rabi_2*term_q_minus*rho_ag
         -1j*rabi_1*rho_ba
     )
 
-    # Eq 4.20
+    # --- Eq 4.20 ---
     # Coeff for rho_ba term
+    # without spontaneous emission
+    # d_rho_ba = (
+    #     -1*(1j*del_ba+gamma_2/2)*rho_ba
+    #     +1j*rabi_2*term_q_minus*rho_aa
+    #     -1j*rabi_2*term_q_plus*rho_bb
+    #     -1j*rabi_1*rho_bg
+    # )
 
+    # with spontaneous emission as per Metcalf Laser Cooling and Trapping
     d_rho_ba = (
-        -1*(1j*del_ba+gamma_2/2)*rho_ba
-        +1j*rabi_2*term_q_minus*rho_aa
-        -1j*rabi_2*term_q_plus*rho_bb
-        -1j*rabi_1*rho_bg
+        -(1j * del_ba + (gamma_1 + gamma_2) / 2) * rho_ba
+        + 1j * rabi_2 * term_q_minus * rho_aa
+        - 1j * rabi_2 * term_q_plus * rho_bb
+        - 1j * rabi_1 * rho_bg
     )
 
     # return [d_rho_gg, d_rho_aa, d_rho_bb, d_rho_ag, d_rho_bg, d_rho_ba]
@@ -137,6 +160,35 @@ def run_simulation(params, t_span, t_eval):
     )
     return sol
 
+def run_analytical_scaling(config, powers, mass_amu=87.62):
+    """
+    Calculates the analytical ionization yield using the Meijer G-function
+    for a thermal atomic beam traversing a Gaussian laser profile.
+    """
+    crossSi = config['crossPeak']
+    w_2 = config['w_2']
+    
+    # Reconstruct beam diameter from the stored area
+    beam_radius_m = np.sqrt(config['beam_area_m2'] / np.pi)
+    d_beam = 2.0 * beam_radius_m
+    
+    # Retrieve thermal velocity
+    v_avg, _ = calculate_interaction_time(T_celsius=530.0, L_cm=1.5, mass_amu=mass_amu)
+    
+    gammaParam = crossSi / (2.0 * con.hbar * w_2 * d_beam)
+    
+    yield_meijer = []
+    for p in powers:
+        frontTerm = ((gammaParam * p) ** 4) / (16.0 * np.sqrt(con.pi) * v_avg ** 4)
+        tmp = ((gammaParam * p) ** 2) / (4.0 * v_avg ** 2)
+        
+        # Evaluate Meijer G-function
+        mG = float(N(meijerg([[], []], [[-2, -1.5, 0], []], tmp)))
+        yield_meijer.append(1.0 - frontTerm * mG)
+        
+    return np.array(yield_meijer)
+
+# Pretty sure this is depricated but keeping it for now
 def plot_results(sol):
     t = sol.t
     
@@ -349,8 +401,21 @@ def main():
     
     # run_time_dynamics(base_params, w_2, crossPeak, linewidth405)
     # run_power_scaling(base_params, w_2, crossPeak, linewidth405, t_int)
-    run_power_scaling_parallel(config, True, True)
+    # run_power_scaling_parallel(config, False, True)
 
+    # --- Compare with Analytical Result from Rochester Scientific ---
+    powers, yield_me = run_power_scaling_parallel(config, False, False)
+    yield_meijer = run_analytical_scaling(config, powers)
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(powers, yield_me, 'ro-', label='Master Equation (Full AC Stark)')
+    plt.plot(powers, yield_meijer, 'k--', label='Meijer-G (Analytical Velocity Avg)')
+    plt.xlabel("405nm Laser Power (W)")
+    plt.ylabel("Ionization Efficiency")
+    plt.title("Comparison of Ionization Models for Strontium")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
     isoConfig = config.copy()
     isoConfig['P2'] = 100 # 100W testing for selectivity
 
