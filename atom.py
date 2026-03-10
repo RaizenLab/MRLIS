@@ -4,7 +4,7 @@ import numpy as np
 import scipy.constants as C
 import matplotlib.pyplot as plt
 class atom:
-    def __init__(self, f = "", transition_wl = 657.278e-9, A = 2.6e3, oven_T = 650, vap_p_consts = [15.133, 9517, 1.4030], theta = 0.02609, melting_temp = 1115, diameter = 197e-12):
+    def __init__(self, f = "", transition_wl = 657.278e-9, A = 2.6e3, oven_T = 650, vap_p_consts = [15.133, 9517, 1.4030], theta = 0.02609, melting_temp = 1115, diameter = 1.97e-10 * 2):
         self.name = f[:-4]
         self.wl = transition_wl
         self.freq = C.c / self.wl
@@ -14,7 +14,7 @@ class atom:
         self.theta = theta
         self.isotopes = dict()
         self.headers = []
-        self.melt = melting_temp + 273.15
+        self.melt = melting_temp # in Kelvin
         self.a, self.b, self.c = vap_p_consts
         self.d = diameter
         self.sigma = np.pi * np.power(diameter, 2)
