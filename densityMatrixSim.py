@@ -2,7 +2,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import scipy.constants as con
-from multiprocessing import Pool
+from joblib import Parallel, delayed
 
 # Follows derivation from "Application of the density matrix method to multiphoton ionization of molecules"
 def master_equations(t, y, params):
@@ -165,54 +165,37 @@ def calculate_polarizability_shift(intensity, alpha_si):
     energy_joules = - (alpha_si * intensity) / (2 * con.c * con.epsilon_0)
     return energy_joules / con.hbar
 
-# --- CASE 1: Time Dynamics ---
-def run_time_dynamics(base_params, w_2, crossPeak, linewidth405):
-    print("\n--- Running Case 1: Time Dynamics ---")
+def simulate_single_power(power, config, detuningSelect):
+    intensity = power / config['beam_area_m2']
+    current_params = config['base_params'].copy()
     
-    t_end = 100e-6
-    t_points = 500
-    t_span = (0, t_end)
-    t_eval = np.linspace(0, t_end, t_points)
-
-    base_I2 = 5658.84
-    i2_values = [1*base_I2, 10*base_I2, 100*base_I2] 
+    shift_g = calculate_polarizability_shift(intensity, config['alpha_g_si'])
+    shift_a = calculate_polarizability_shift(intensity, config['alpha_a_nonres_si'])
     
-    alpha_g_si = -1.0894e-38
-    alpha_a_nonres_si = 0.0 
+    current_params['del_ag'] = detuningSelect + (shift_a - shift_g)
+    
+    shift_b = calculate_ponderomotive_shift(intensity, config['w_2'])
+    current_params['del_ba'] = shift_b - shift_a
+    current_params['del_bg'] = current_params['del_ag'] + current_params['del_ba']
+    
+    current_params['rabi_2'] = calculate_rabi2(
+        intensity, 
+        config['w_2'], 
+        config['crossPeak'], 
+        config['linewidth405']
+    )
 
-    plt.figure(figsize=(10, 6))
+    sol = run_simulation(current_params, config['t_span'], config['t_eval'])
+    
+    if sol.success:
+        pop_gg = np.real(sol.y[0, -1])
+        pop_aa = np.real(sol.y[1, -1])
+        pop_bb = np.real(sol.y[2, -1])
+        return 1.0 - (pop_gg + pop_aa + pop_bb)
+    
+    return 0.0
 
-    for val in i2_values:
-        current_params = base_params.copy()
-        
-        # Consistent detuning logic
-        shift_g = calculate_polarizability_shift(val, alpha_g_si)
-        shift_a = calculate_polarizability_shift(val, alpha_a_nonres_si)
-        shift_b = calculate_ponderomotive_shift(val, w_2)
-
-        current_params['del_ag'] = shift_a - shift_g
-        current_params['del_ba'] = shift_b - shift_a
-        current_params['del_bg'] = current_params['del_ag'] + current_params['del_ba']
-        current_params['rabi_2'] = calculate_rabi2(val, w_2, crossPeak, linewidth405)
-        
-        lbl = f"P_ratio = {val/base_I2:.0f}"
-        sol = run_simulation(current_params, t_span, t_eval)
-
-        if sol.success:
-            pop_gg = np.real(sol.y[0])
-            pop_aa = np.real(sol.y[1])
-            pop_bb = np.real(sol.y[2])
-            yield_ion = 1.0 - (pop_gg + pop_aa + pop_bb)
-            plt.plot(sol.t*1e6, yield_ion, label='Ions, '+lbl)
-
-    plt.title("Case 1: Ion Yield over Time")
-    plt.xlabel(r"Time ($\mu$s)")
-    plt.ylabel("Ion Population")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-
-# --- Case 2: Power Scaling ---
+# --- Case 1: Power Scaling ---
 def run_power_scaling(base_params, w_2, crossPeak, linewidth405, t_int):
     points = 20
     powers = np.logspace(-1, 2, points) 
@@ -280,6 +263,110 @@ def run_power_scaling(base_params, w_2, crossPeak, linewidth405, t_int):
     plt.tight_layout()
     plt.show()
 
+# --- Case 2: Power Scaling but in Parallel ---
+# No isotope shift just a single atom
+def run_power_scaling_parallel(base_params, w_2, crossPeak, linewidth405, t_int, plotVal):
+    points = 20
+    powers = np.logspace(-1, 2, points) 
+    yields = []
+    bar_length = 20
+
+    t_span = (0, t_int)
+    t_eval = [t_int]
+    
+    beam_radius_m = 0.015 / 2.0
+    beam_area_m2 = np.pi * (beam_radius_m)**2
+    
+    # Pre-calculated 405 nm polarizability for the 5s^2 1S0 ground state
+    # From Safronova, M. S., et al. "Blackbody-radiation shift in the Sr optical atomic clock." Physical Review A 87.012509 (2013)
+    alpha_g_si = -1.0894e-38
+    
+    # The non-resonant background polarizability of the 5s5p 1P1 state. 
+    # The resonant Fano interaction is handled by the master equations.
+    alpha_a_nonres_si = 0.0 
+
+    config = {
+    'beam_area_m2': beam_area_m2,
+    'base_params': base_params,
+    'alpha_g_si': alpha_g_si,
+    'alpha_a_nonres_si': alpha_a_nonres_si,
+    'w_2': w_2,
+    'crossPeak': crossPeak,
+    'linewidth405': linewidth405,
+    't_span': t_span,
+    't_eval': t_eval
+    }
+
+    yields = Parallel(n_jobs=-1, verbose=10)(delayed(simulate_single_power)(power,config,0) for power in powers)
+    
+    if plotVal:
+        print("\n--- Simulation Complete ---")
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+        ax1.plot(powers, yields, marker='o', linestyle='-', color='blue')
+        ax1.set_title("Ionization Yield vs. Autoionization Laser Power")
+        ax1.set_xlabel("Laser Power (W)")
+        ax1.set_ylabel("Ion Yield")
+        ax1.grid(True, which="both", ls="--")
+        plt.tight_layout()
+        plt.show()
+    
+    return powers, np.array(yields)
+
+# --- Case 3: Isotope Enrichment ---
+def run_iso_enrichment(parameters, w_1, w_2, P1, P2, crossPeak, isotopeList):
+    einstein461 = 2.01e8
+    linewidth405 = 2 * np.pi * 45 * con.c * 100
+    
+    # Extract Sr-84 shift dynamically to lock the laser frequency
+    shift_sr84 = next(iso["shift"] for iso in isotopeList if iso["name"] == "Sr-84")
+    w_laser = w_1 + 2 * np.pi * shift_sr84
+    
+    Natom = 1e14
+    
+    beam_radius_m = 0.015 / 2.0
+    beam_area_m2 = np.pi * (beam_radius_m)**2
+    intensity1 = P1 / beam_area_m2    
+    
+    alpha_g_si = -1.0894e-38
+    alpha_a_nonres_si = 0.0 
+    
+    ions_produced = []
+
+    for iso in isotopeList:
+        # Absolute transition frequency of the evaluated isotope
+        w_1Iso = w_1 + 2 * np.pi * iso["shift"]
+        
+        # Detuning between the Sr-84 locked laser and the evaluated isotope
+        detuningSelect = w_laser - w_1Iso
+        
+        mu461 = np.sqrt((3 * con.pi * con.epsilon_0 * con.hbar * einstein461 * con.c**3) / (w_1Iso**3))
+        rabi461 = (mu461 / con.hbar) * np.sqrt((2 * intensity1) / (con.c * con.epsilon_0))
+        
+        iso_params = parameters.copy()
+        iso_params['rabi_1'] = rabi461
+        
+        v_avg, t_int = calculate_interaction_time(T_celsius=530.0, L_cm=1.5, mass_amu=iso["mass"])
+        
+        config = {
+            'beam_area_m2': beam_area_m2,
+            'base_params': iso_params,
+            'alpha_g_si': alpha_g_si,
+            'alpha_a_nonres_si': alpha_a_nonres_si,
+            'w_2': w_2,
+            'crossPeak': crossPeak,
+            'linewidth405': linewidth405,
+            't_span': (0, t_int),
+            't_eval': [t_int]
+        }
+        
+        yield_ion = simulate_single_power(P2, config, detuningSelect)
+        iso_ion_count = Natom * iso["abundance"] * yield_ion
+        ions_produced.append(iso_ion_count)
+        
+    return ions_produced
+        
+
+
 def main():
     # Experimental Parameters
     lambda_1 = 460.73330e-9 # From https://physics.nist.gov/PhysRefData/ASD/lines_form.html (Sr-I)
@@ -297,13 +384,14 @@ def main():
     crossPeak = 5.6e-19 # Peak cross section in m^2
     rabi405 = calculate_rabi2(I2,w_2,crossPeak,linewidth405)
 
-    v_avg, t_int = calculate_interaction_time(T_celsius=530.0, L_cm=1.5)
+    v_avg, t_int = calculate_interaction_time(T_celsius=530.0, L_cm=1.5, mass_amu=87.62)
+
 
     base_params = {
         'rabi_1': rabi461,
         'rabi_2': rabi405,
         'q': 6.8,
-        'gamma_1': einstein461,
+        'gamma_1': einstein461/(2*np.pi),
         'gamma_2': linewidth405,
         'del_ag': 0.0, 
         'del_bg': 0.0,
@@ -311,7 +399,21 @@ def main():
     }
 
     # run_time_dynamics(base_params, w_2, crossPeak, linewidth405)
-    run_power_scaling(base_params, w_2, crossPeak, linewidth405, t_int)
+    # run_power_scaling(base_params, w_2, crossPeak, linewidth405, t_int)
+    run_power_scaling_parallel(base_params, w_2, crossPeak, linewidth405, t_int, True)
+
+    # Isotope Enrichment Calcs
+    isotopes = [
+        {"mass": 83.913419, "shift": -270.8e6, "abundance": 0.0056, "name": "Sr-84"},
+        {"mass": 85.90926073, "shift": -124.8e6, "abundance": 0.0986, "name": "Sr-86"},
+        {"mass": 86.90887750, "shift": -68.9e6, "abundance": 0.0700, "name": "Sr-87"},
+        {"mass": 87.90561226, "shift": 0.0, "abundance": 0.8258, "name": "Sr-88"},
+    ]
+    
+    # Center on Sr84
+    
+
+
 
 if __name__ == "__main__":
     main()
