@@ -320,6 +320,79 @@ def run_single_iso(config, iso):
     yield_ion = simulate_single_power(isoConfig['P2'], config, detuningSelect)
     return yield_ion
 
+def run_selectivity(config, isotopes):
+    yields = []
+
+    isoConfig = config.copy()
+    
+    yields = Parallel(n_jobs=-1, verbose=10)(
+        delayed(run_single_iso)(isoConfig, iso) for iso in isotopes
+    )
+    
+    for iso, y in zip(isotopes, yields):
+        print(f'Ionization Probability of {iso["name"]}: {y:.6f}')
+        
+    return np.array(yields)
+
+def calculate_ion_abundances(yields, isotopes, nAtom):
+    ion_counts = []
+    total_ions = 0.0
+    
+    for y, iso in zip(yields, isotopes):
+        ionized_atoms = nAtom * iso["abundance"] * y
+        ion_counts.append(ionized_atoms)
+        total_ions += ionized_atoms
+        
+    new_abundances = []
+    for count, iso in zip(ion_counts, isotopes):
+        new_ab = count / total_ions if total_ions > 0 else 0.0
+        new_abundances.append(new_ab)
+        print(f'{iso["name"]} Ions: {count:.4e} | New Abundance: {new_ab * 100:.6f}%')
+        
+    return np.array(ion_counts), np.array(new_abundances)
+
+def plot_p1_scaling_selectivity(config, isotopes, nAtom):
+    points = 20
+    powers_p1 = np.logspace(-4, 0, points)
+    
+    sr84_yields = []
+    sr84_abundances = []
+    
+    isoConfig = config.copy()
+    isoConfig['P2'] = 100.0
+    
+    idx_84 = next(i for i, iso in enumerate(isotopes) if iso["name"] == "Sr-84")
+    
+    print("\n--- Running P1 Scaling Selectivity ---")
+    for p1 in powers_p1:
+        isoConfig['P1'] = p1
+        yields = run_selectivity(isoConfig, isotopes)
+        ion_counts, new_abundances = calculate_ion_abundances(yields, isotopes, nAtom)
+        
+        sr84_yields.append(yields[idx_84])
+        sr84_abundances.append(new_abundances[idx_84] * 100.0)
+        
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    
+    color_yield = 'tab:red'
+    ax1.set_xlabel('461nm Laser Power P1 (W)')
+    ax1.set_ylabel('Sr-84 Ionization Probability', color=color_yield)
+    ax1.plot(powers_p1, sr84_yields, marker='o', color=color_yield, label='Yield')
+    ax1.tick_params(axis='y', labelcolor=color_yield)
+    ax1.set_xscale('log')
+    ax1.grid(True, which="both", ls="--")
+    
+    ax2 = ax1.twinx()
+    color_abund = 'tab:blue'
+    ax2.set_ylabel('Sr-84 Abundance (%)', color=color_abund)
+    ax2.plot(powers_p1, sr84_abundances, marker='s', color=color_abund, label='Abundance')
+    ax2.tick_params(axis='y', labelcolor=color_abund)
+    
+    fig.suptitle("Sr-84 Enrichment vs. Excitation Laser Power (P2 = 100W)")
+    fig.tight_layout()
+    plt.show()
+    
+    return powers_p1, np.array(sr84_yields), np.array(sr84_abundances)
 
 def main():
     # Experimental Parameters
@@ -404,28 +477,34 @@ def main():
     # run_power_scaling_parallel(config, False, True)
 
     # --- Compare with Analytical Result from Rochester Scientific ---
-    powers, yield_me = run_power_scaling_parallel(config, False, False)
-    yield_meijer = run_analytical_scaling(config, powers)
+    # powers, yield_me = run_power_scaling_parallel(config, False, False)
+    # yield_meijer = run_analytical_scaling(config, powers)
 
-    plt.figure(figsize=(8, 5))
-    plt.plot(powers, yield_me, 'ro-', label='Master Equation (Full AC Stark)')
-    plt.plot(powers, yield_meijer, 'k--', label='Meijer-G (Analytical Velocity Avg)')
-    plt.xlabel("405nm Laser Power (W)")
-    plt.ylabel("Ionization Efficiency")
-    plt.title("Comparison of Ionization Models for Strontium")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+    # plt.figure(figsize=(8, 5))
+    # plt.plot(powers, yield_me, 'ro-', label='Master Equation (Full AC Stark)')
+    # plt.plot(powers, yield_meijer, 'k--', label='Meijer-G (Analytical Velocity Avg)')
+    # plt.xlabel("405nm Laser Power (W)")
+    # plt.ylabel("Ionization Efficiency")
+    # plt.title("Comparison of Ionization Models for Strontium")
+    # plt.legend()
+    # plt.grid(True)
+    # plt.show()
+
+
     isoConfig = config.copy()
     isoConfig['P2'] = 100 # 100W testing for selectivity
+    isoConfig['P1'] = 0.01
 
     # --- Unit Comparison with standard power scaling ---
-    # iso84 = next(iso for iso in isotopes if iso["name"] == "Sr-84")
-    # yield84 = run_single_iso(isoConfig,iso84)
-    # print(f'Ionization Probability of Sr84 when targeted: {yield84:.6f}')
-    # iso88 = next(iso for iso in isotopes if iso["name"] == "Sr-88")
-    # yield88 = run_single_iso(isoConfig,iso88)
-    # print(f'Ionization Probability of Sr88 when targeted: {yield88:.6f}')
+    nAtom = 1e14
+    
+    print("\n--- Running Selectivity Simulation ---")
+    yields = run_selectivity(isoConfig, isotopes)
+    
+    print("\n--- Ion Beam Composition ---")
+    ion_counts, new_abundances = calculate_ion_abundances(yields, isotopes, nAtom)
+
+    plot_p1_scaling_selectivity(config, isotopes, nAtom)
 
 if __name__ == "__main__":
     main()
